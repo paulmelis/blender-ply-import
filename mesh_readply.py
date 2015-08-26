@@ -60,6 +60,9 @@ if vcolarray is not None:
     vcol_layer = mesh.vertex_colors.new()
     vcol_data = vcol_layer.data
     vcol_data.foreach_set('color', vcolarray)
+
+if vnarray is not None:
+    print('Warning: NOT applying vertex normals (yet)')
     
 mesh.validate()
 mesh.update()
