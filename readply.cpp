@@ -19,9 +19,6 @@ static int      next_face_element_offset = 0;
 static int 
 vertex_cb(p_ply_argument argument) 
 {
-    long eol;
-    ply_get_argument_user_data(argument, NULL, &eol);
-        
     vertices[next_vertex_element_offset] = ply_get_argument_value(argument);
     next_vertex_element_offset++;
 
@@ -53,7 +50,7 @@ face_cb(p_ply_argument argument)
         
     if (length == 3 && value_index == 2)
     {
-        // Last index of triangle just added to array.
+        // Last index of triangle was just added to the index array.
         // Add extra 0 index to get to 4 indices per face
         faces[next_face_element_offset] = 0;        
         next_face_element_offset++;
