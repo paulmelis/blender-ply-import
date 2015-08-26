@@ -25,7 +25,7 @@ if len(args) > 0:
 
 t0 = time.time()
 
-num_vertices, num_faces, varray, farray = readply(fname)
+num_vertices, num_faces, varray, farray, vnarray, vcolarray = readply(fname)
 
 # Create a mesh + object using the binary vertex and face data
 
@@ -37,6 +37,30 @@ mesh.vertices.foreach_set('co', varray)
 mesh.tessfaces.add(num_faces)
 mesh.tessfaces.foreach_set('vertices_raw', farray)
 
+mesh.validate()
+mesh.update()
+
+if vcolarray is not None:
+    
+    """    
+    # For each face, set the vertex colors of the vertices making up that face
+    for fi in range(num_faces):
+        
+        # Get vertex indices for this triangle/quad
+        i, j, k, l = farray[4*fi:4*fi+4]
+        
+        face_col = vcol_data[fi]
+        face_col.color1 = vcolarray[3*i:3*i+3]
+        face_col.color2 = vcolarray[3*j:3*j+3]
+        face_col.color3 = vcolarray[3*k:3*k+3]
+        if l != 0:
+            face_col.color4 = vcolarray[3*l:3*l+3]
+    """
+    
+    vcol_layer = mesh.vertex_colors.new()
+    vcol_data = vcol_layer.data
+    vcol_data.foreach_set('color', vcolarray)
+    
 mesh.validate()
 mesh.update()
 

@@ -4,7 +4,7 @@ TODO:
 - vertex colors (red, green, blue)
 - normals
 - texture coordinates (s, t) OR (u,v)?
-- we assume property order is always correct, e.g. x,y,z
+- we assume property order is always correct, e.g. x,y,z. Need good way to handle this.
 */
 
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
@@ -20,13 +20,14 @@ static int      next_vertex_element_offset = 0;
 
 static int      *faces = NULL;                      
 static int      next_face_element_offset = 0;
+static int      num_triangles, num_quads;
 
 static float    *vertex_normals = NULL;
 static int      next_vertex_normal_element_offset = 0;
 
 static float    *vertex_colors = NULL;
 static int      next_vertex_color_element_offset = 0;
-float           vertex_color_scale_factor = 1.0;
+static float    vertex_color_scale_factor = 1.0;
 
 static int 
 vertex_cb(p_ply_argument argument) 
@@ -67,6 +68,11 @@ face_cb(p_ply_argument argument)
     {
         if (length > 4)
             printf("Warning: ignoring face with %ld vertices!\n", length);
+        else if (length == 3)
+            num_triangles++;
+        else if (length == 4)
+            num_quads++;
+        
         return 1;
     }
     
@@ -146,7 +152,7 @@ readply(PyObject* self, PyObject* args)
     assert(vertex_element && "Don't have a vertex element");
     assert(face_element && "Don't have a face element");
     
-    // Set callbacks
+    // Set vertex and face callbacks
     
     long nvertices, nfaces;
     
@@ -219,6 +225,8 @@ readply(PyObject* self, PyObject* args)
     }
     
     // Let rply process the file using the callbacks
+    
+    num_triangles = num_quads = 0;
         
     if (!ply_read(ply)) 
     {
@@ -234,6 +242,8 @@ readply(PyObject* self, PyObject* args)
         
         return NULL;            
     }
+    
+    printf("%d triangles, %d quads\n", num_triangles, num_quads);
     
     // Clean up
     
@@ -268,7 +278,49 @@ readply(PyObject* self, PyObject* args)
     
     if (have_vertex_colors)
     {
+        /* Direct return of per-vertex colors
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_colors);  
+        */
+        
+        // Colors per vertex
+        // ->
+        // Colors per vertex per face
+        
+        const int n = 3*((num_triangles*3)+(num_quads*4));
+        
+        float   *vcol2 = (float*) malloc (n*sizeof(float));
+        float   *vcol2color = vcol2;
+        float   *col;
+        int     vi;
+        
+        for (int fi = 0; fi < nfaces; fi++)
+        {
+            const int *face = faces + 4*fi;
+            
+            for (int i = 0; i < 4; i++)
+            {
+                vi = face[i];
+                
+                if (i == 3 && vi == 0)
+                {
+                    // Triangle
+                    break;
+                }
+                
+                col = vertex_colors + 3*vi;
+                
+                vcol2color[0] = col[0];
+                vcol2color[1] = col[1];
+                vcol2color[2] = col[2];                
+                vcol2color += 3;            
+            }
+        }
+        
+        free(vertex_colors);
+        
+        npy_intp    dims[1] = { n };
+        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, vcol2);  
+        
         PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
         
         np_vcolors = (PyObject*) arr;
