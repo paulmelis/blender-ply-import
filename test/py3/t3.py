@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 from readply import readply
 
-res = readply('/data/models/uss_enterprise-jjabrams/export.bin.ply')
+res = readply(sys.argv[1])

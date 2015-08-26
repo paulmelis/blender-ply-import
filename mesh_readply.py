@@ -5,15 +5,23 @@ import bpy
 sys.path.insert(0, '.') 
 from readply import readply
 
+args = []
+idx = sys.argv.index('--')
+if idx != 1:
+    args = sys.argv[idx+1:]
+
 # In foreach_getset() in source/blender/python/intern/bpy_rna.c the
 # passed object is checked for supporting the buffer protocol.
 # We can use this functionality to pass chunks of memory containing
 # vertex and face data, without having to build up a Python data
 # structure. We use NumPy arrays here to easily pass the data.
 
-#fname = '/data/models/uss_enterprise-jjabrams/export.bin.ply'
+fname = '/data/models/uss_enterprise-jjabrams/export.bin.ply'
 #fname = '/home/paulm/mnt/elvis/uva/rbc-util/RBC.00003300.ply'
-fname = 'zeroindex.ply'
+#fname = 'zeroindex.ply'
+
+if len(args) > 0:
+    fname = args[0]
 
 t0 = time.time()
 

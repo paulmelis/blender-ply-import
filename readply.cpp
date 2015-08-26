@@ -1,6 +1,10 @@
 /* 
 TODO:
 - need to handle faces with more than 4 vertices
+- vertex colors (red, green, blue)
+- normals
+- texture coordinates (s, t) OR (u,v)?
+- we assume property order is always correct, e.g. x,y,z
 */
 
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
@@ -9,6 +13,7 @@ TODO:
 #include <numpy/arrayobject.h>
 #include <rply.h>
 #include <cstdio>
+#include <cassert>
 
 static float    *vertices = NULL;
 static int      next_vertex_element_offset = 0;
@@ -16,11 +21,36 @@ static int      next_vertex_element_offset = 0;
 static int      *faces = NULL;                      
 static int      next_face_element_offset = 0;
 
+static float    *vertex_normals = NULL;
+static int      next_vertex_normal_element_offset = 0;
+
+static float    *vertex_colors = NULL;
+static int      next_vertex_color_element_offset = 0;
+float           vertex_color_scale_factor = 1.0;
+
 static int 
 vertex_cb(p_ply_argument argument) 
 {
     vertices[next_vertex_element_offset] = ply_get_argument_value(argument);
     next_vertex_element_offset++;
+
+    return 1;
+}
+
+static int 
+vertex_color_cb(p_ply_argument argument) 
+{
+    vertex_colors[next_vertex_color_element_offset] = ply_get_argument_value(argument) * vertex_color_scale_factor;
+    next_vertex_color_element_offset++;
+
+    return 1;
+}
+
+static int 
+vertex_normal_cb(p_ply_argument argument) 
+{
+    vertex_normals[next_vertex_normal_element_offset] = ply_get_argument_value(argument);
+    next_vertex_normal_element_offset++;
 
     return 1;
 }
@@ -57,6 +87,9 @@ face_cb(p_ply_argument argument)
     }
     else if (length == 4 && value_index == 3 && vertex_index == 0)
     {
+        // XXX do this as a post-process, as we also need to reorder
+        // vertex colors, normals, texcoords. Simply flag the quad as
+        // needing reordering.
         // Handle the case when there is a quad that has indices i, j, k, 0.
         // We should cycle the indices to move the 0 out of the last place, 
         // as it would otherwise get interpreted as a triangle.
@@ -92,10 +125,28 @@ readply(PyObject* self, PyObject* args)
         return NULL;            
     }    
     
+    // Check elements
+    
+    p_ply_element   vertex_element=NULL, face_element=NULL;    
+    const char      *name;
+    
+    p_ply_element element = ply_get_next_element(ply, NULL);
+    while (element)
+    {
+        ply_get_element_info(element, &name, NULL);
+        
+        if (strcmp(name, "vertex") == 0)
+            vertex_element = element;
+        else if (strcmp(name, "face") == 0)
+            face_element = element;
+        
+        element = ply_get_next_element(ply, element);
+    }
+    
+    assert(vertex_element && "Don't have a vertex element");
+    assert(face_element && "Don't have a face element");
+    
     // Set callbacks
-    // normals: nx, ny, nz
-    // texcoords: s, t
-    // vcolors: ???
     
     long nvertices, nfaces;
     
@@ -105,6 +156,48 @@ readply(PyObject* self, PyObject* args)
     
     nfaces = ply_set_read_cb(ply, "face", "vertex_indices", face_cb, NULL, 0);
     
+    printf("%ld vertices\n%ld faces\n", nvertices, nfaces);
+    
+    // Set optional callbacks
+    
+    bool            have_vertex_colors = false;
+    bool            have_vertex_normals = false;
+    
+    p_ply_property  prop;
+    e_ply_type      ptype, plength_type, pvalue_type;
+        
+    prop = ply_get_next_property(vertex_element, NULL);
+    while (prop)
+    {
+        ply_get_property_info(prop, &name, &ptype, &plength_type, &pvalue_type);
+        
+        printf("%s\n", name);
+        
+        if (strcmp(name, "red") == 0)
+        {
+            have_vertex_colors = true;
+            
+            if (ptype == PLY_UCHAR)
+                vertex_color_scale_factor = 1.0 / 255;
+            else if (ptype != PLY_FLOAT)
+                printf("Warning: vertex color value type is %d, don't know how to handle!\n", ptype);
+            
+            ply_set_read_cb(ply, "vertex", "red", vertex_color_cb, NULL, 0);
+            ply_set_read_cb(ply, "vertex", "green", vertex_color_cb, NULL, 0);
+            ply_set_read_cb(ply, "vertex", "blue", vertex_color_cb, NULL, 1);            
+        }
+        else if (strcmp(name, "nx") == 0)
+        {
+            have_vertex_normals = true;
+
+            ply_set_read_cb(ply, "vertex", "nx", vertex_normal_cb, NULL, 0);
+            ply_set_read_cb(ply, "vertex", "ny", vertex_normal_cb, NULL, 0);
+            ply_set_read_cb(ply, "vertex", "nz", vertex_normal_cb, NULL, 1);            
+        }
+        
+        prop = ply_get_next_property(vertex_element, prop);
+    }
+    
     // Allocate memory, initialize    
     
     vertices = (float*) malloc(sizeof(float)*nvertices*3);
@@ -113,16 +206,32 @@ readply(PyObject* self, PyObject* args)
     faces = (int*) malloc(sizeof(int)*nfaces*4);
     next_face_element_offset = 0;
     
-    printf("%ld vertices\n%ld faces\n", nvertices, nfaces);
+    if (have_vertex_normals)
+    {
+        vertex_normals = (float*) malloc(sizeof(float)*nvertices*3);
+        next_vertex_normal_element_offset = 0;    
+    }    
+
+    if (have_vertex_colors)
+    {
+        vertex_colors = (float*) malloc(sizeof(float)*nvertices*3);
+        next_vertex_color_element_offset = 0;    
+    }
     
     // Let rply process the file using the callbacks
         
     if (!ply_read(ply)) 
     {
         PyErr_SetString(PyExc_IOError, "Could not read PLY data");
+        
         ply_close(ply);
         free(vertices);
         free(faces);
+        if (have_vertex_normals)
+            free(vertex_normals);
+        if (have_vertex_colors)
+            free(vertex_colors);
+        
         return NULL;            
     }
     
@@ -137,12 +246,40 @@ readply(PyObject* self, PyObject* args)
     
     // http://stackoverflow.com/questions/27912483/memory-leak-in-python-extension-when-array-is-created-with-pyarray-simplenewfrom
     PyArrayObject *np_vertices = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);  
-    PyArrayObject *np_faces = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);  
-    
     PyArray_ENABLEFLAGS(np_vertices, NPY_ARRAY_OWNDATA);
+    
+    PyArrayObject *np_faces = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);  
     PyArray_ENABLEFLAGS(np_faces, NPY_ARRAY_OWNDATA);
     
-    return Py_BuildValue("(iiOO)",  nvertices, nfaces, np_vertices, np_faces);
+    PyObject *np_vcolors, *np_vnormals;
+    
+    if (have_vertex_normals)
+    {
+        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_normals);  
+        PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
+        
+        np_vnormals = (PyObject*) arr;
+    }
+    else
+    {
+        np_vnormals = Py_None;
+        Py_XINCREF(np_vnormals);
+    }    
+    
+    if (have_vertex_colors)
+    {
+        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_colors);  
+        PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
+        
+        np_vcolors = (PyObject*) arr;
+    }
+    else
+    {
+        np_vcolors = Py_None;
+        Py_XINCREF(np_vcolors);
+    }
+    
+    return Py_BuildValue("(iiOOOO)",  nvertices, nfaces, np_vertices, np_faces, np_vnormals, np_vcolors);
 }
 
 static PyMethodDef ModuleMethods[] =
