@@ -1,7 +1,8 @@
 from distutils.core import setup, Extension
+import numpy
 
 module1 = Extension('readply', 
-    include_dirs = ['./rply'],
+    include_dirs = ['./rply', numpy.get_include()],
     sources = ['readply.cpp', 'rply/rply.c'])
 
 setup(
