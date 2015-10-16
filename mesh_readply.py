@@ -1,4 +1,6 @@
 #!/usr/bin/env python2
+#
+# blender -P mesh_readply.py -- file.ply
 import sys, os, array, time, gc
 import bpy
 
@@ -79,4 +81,3 @@ print('Imported in %.3fs' % (t1-t0))
 
 del varray
 del farray
-gc.collect()
