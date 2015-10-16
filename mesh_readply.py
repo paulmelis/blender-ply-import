@@ -27,6 +27,9 @@ t0 = time.time()
 
 num_vertices, num_faces, varray, farray, vnarray, vcolarray = readply(fname)
 
+t1 = time.time()
+print('PLY file read in %.3fs' % (t1-t0))
+
 # Create a mesh + object using the binary vertex and face data
 
 mesh = bpy.data.meshes.new(name='imported mesh')
@@ -74,9 +77,10 @@ s.objects.link(obj)
 s.objects.active = obj
 obj.select = True
 
-t1 = time.time()
-print('Imported in %.3fs' % (t1-t0))
+t2 = time.time()
+print('Blender object+mesh created in %.3fs' % (t2-t1))
 
 del varray
 del farray
-gc.collect()
+
+print('Total import time %.3fs' % (t2-t0))
