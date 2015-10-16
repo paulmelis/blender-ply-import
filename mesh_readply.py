@@ -1,4 +1,6 @@
 #!/usr/bin/env python2
+#
+# blender -P mesh_readply.py -- file.ply
 import sys, os, array, time, gc
 import bpy
 
