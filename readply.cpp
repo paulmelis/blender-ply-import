@@ -73,22 +73,22 @@ static PyTypeObject _MyDeallocType =
 };
 
 //
-// rply stuff
+// rply stuff (arrays and callbacks)
 //
 
 static float    *vertices = NULL;
-static int      next_vertex_element_offset = 0;
+static int      next_vertex_element_offset;
 
 static int      *faces = NULL;
-static int      next_face_element_offset = 0;
+static int      next_face_element_offset;
 static int      num_triangles, num_quads;
 
 static float    *vertex_normals = NULL;
-static int      next_vertex_normal_element_offset = 0;
+static int      next_vertex_normal_element_offset;
 
 static float    *vertex_colors = NULL;
-static int      next_vertex_color_element_offset = 0;
-static float    vertex_color_scale_factor = 1.0;
+static int      next_vertex_color_element_offset;
+static float    vertex_color_scale_factor;
 
 static int
 vertex_cb(p_ply_argument argument)
@@ -181,7 +181,9 @@ readply(PyObject* self, PyObject* args)
     p_ply ply = ply_open(fname, NULL, 0, NULL);
     if (!ply)
     {
-        PyErr_SetString(PyExc_IOError, "Could not open PLY file");
+        char s[1024];
+        sprintf(s, "Could not open PLY file %s", fname);
+        PyErr_SetString(PyExc_IOError, s);
         return NULL;
     }
 
@@ -246,7 +248,9 @@ readply(PyObject* self, PyObject* args)
 
             if (ptype == PLY_UCHAR)
                 vertex_color_scale_factor = 1.0 / 255;
-            else if (ptype != PLY_FLOAT)
+            else if (ptype == PLY_FLOAT)
+                vertex_color_scale_factor = 1.0;
+            else
                 printf("Warning: vertex color value type is %d, don't know how to handle!\n", ptype);
 
             ply_set_read_cb(ply, "vertex", "red", vertex_color_cb, NULL, 0);

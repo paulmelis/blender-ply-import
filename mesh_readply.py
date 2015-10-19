@@ -72,7 +72,7 @@ if vcolarray is not None:
     vcol_data.foreach_set('color', vcolarray)
 
 if vnarray is not None:
-    print('Warning: NOT applying vertex normals (yet)')
+    print('Warning: vertex normals read from .ply file, but NOT applying vertex normals to blender object (yet)!')
     
 mesh.validate()
 mesh.update()

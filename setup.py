@@ -10,6 +10,6 @@ setup(
     author = 'Paul Melis',    
     author_email = 'paul.melis@surfsara.nl',
     version = '1.0',
-    description = 'Load PLY files into NumPy arrays, for Blender import',
+    description = 'Load PLY files into NumPy arrays, for faster Blender import',
     ext_modules = [module1]
 )
