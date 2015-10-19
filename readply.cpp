@@ -1,7 +1,7 @@
 /*
 TODO:
 - need to handle faces with more than 4 vertices
-- texture coordinates (s, t) OR (u,v)?
+- handle texture coordinates (are they named (s, t) OR (u,v) in the header?)
 - we assume property order in the file is always x,y,z. Need good way to handle other orders
 - add parameter to specify if returned vertex color array is
   blender-style (color per vertex per face) or plain per-vertex
@@ -15,7 +15,11 @@ TODO:
 #include <cstdio>
 #include <cassert>
 
+//
+// Custom object type to handle correct deallocation
 // After http://blog.enthought.com/general/numpy-arrays-with-pre-allocated-memory/
+//
+
 typedef struct
 {
     PyObject_HEAD
@@ -67,6 +71,10 @@ static PyTypeObject _MyDeallocType =
     Py_TPFLAGS_DEFAULT,             /*tp_flags*/
     "Internal deallocator object",  /* tp_doc */
 };
+
+//
+// rply stuff
+//
 
 static float    *vertices = NULL;
 static int      next_vertex_element_offset = 0;
@@ -134,7 +142,7 @@ face_cb(p_ply_argument argument)
     next_face_element_offset++;
 
     // Blender's vertices_raw array uses 4 vertex indices per face,
-    // for denoting either a triangle or a quad.
+    // denoting either a triangle or a quad.
     // For a triangle the last (fourth) index needs to be 0.
 
     if (length == 3 && value_index == 2)
@@ -146,12 +154,12 @@ face_cb(p_ply_argument argument)
     }
     else if (length == 4 && value_index == 3 && vertex_index == 0)
     {
-        // XXX do this as a post-process, as we also need to reorder
-        // vertex colors, normals, texcoords. Simply flag the quad as
-        // needing reordering.
         // Handle the case when there is a quad that has indices i, j, k, 0.
         // We should cycle the indices to move the 0 out of the last place,
         // as it would otherwise get interpreted as a triangle.
+        // XXX do this as a post-process, as we also need to reorder
+        // vertex colors, normals, texcoords. I.e. flag the quad as
+        // needing reordering and process all arrays later, not here.
         const int firstidx = next_face_element_offset-4;
         faces[firstidx+3] = faces[firstidx+2];
         faces[firstidx+2] = faces[firstidx+1];
@@ -277,7 +285,7 @@ readply(PyObject* self, PyObject* args)
         next_vertex_color_element_offset = 0;
     }
 
-    // Let rply process the file using the callbacks
+    // Let rply process the file using the callbacks we set
 
     num_triangles = num_quads = 0;
 
@@ -302,21 +310,21 @@ readply(PyObject* self, PyObject* args)
 
     ply_close(ply);
 
-    // Return stuff
+    // Create return value objects
 
     npy_intp    np_vertices_dims[1] = { nvertices*3 };
     npy_intp    np_faces_dims[1] = { nfaces*4 };
 
     PyObject *newobj;
 
-    // XXX check for NULL in return of PyArray_SimpleNewFromData() and PyObject_New()
-    // http://stackoverflow.com/questions/27912483/memory-leak-in-python-extension-when-array-is-created-with-pyarray-simplenewfrom
+    // XXX check for NULL in return of PyArray_SimpleNewFromData() and PyObject_New()    
     PyArrayObject *np_vertices = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);
+    PyArrayObject *np_faces = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);
+        
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = vertices;
     PyArray_SetBaseObject(np_vertices, newobj);
-
-    PyArrayObject *np_faces = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);
+    
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = faces;
     PyArray_SetBaseObject(np_faces, newobj);
@@ -326,6 +334,7 @@ readply(PyObject* self, PyObject* args)
     if (have_vertex_normals)
     {
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_normals);
+        
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vertex_normals;
         PyArray_SetBaseObject(arr, newobj);
@@ -334,6 +343,7 @@ readply(PyObject* self, PyObject* args)
     }
     else
     {
+        // No normals
         np_vnormals = Py_None;
         Py_XINCREF(np_vnormals);
     }
@@ -391,12 +401,17 @@ readply(PyObject* self, PyObject* args)
     }
     else
     {
+        // No vertex colors
         np_vcolors = Py_None;
         Py_XINCREF(np_vcolors);
     }
+    
+    // Return the stuff!
 
     return Py_BuildValue("(iiNNNN)",  nvertices, nfaces, np_vertices, np_faces, np_vnormals, np_vcolors);
 }
+
+// Python module stuff
 
 static PyMethodDef ModuleMethods[] =
 {

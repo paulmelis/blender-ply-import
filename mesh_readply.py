@@ -5,7 +5,12 @@ import sys, os, array, time, gc
 import bpy
 
 sys.path.insert(0, '.') 
-from readply import readply
+try:
+    from readply import readply
+except ImportError:
+    scriptdir = os.path.split(os.path.abspath(__file__))[0]
+    sys.path.insert(0, scriptdir)
+    from readply import readply
 
 args = []
 idx = sys.argv.index('--')
