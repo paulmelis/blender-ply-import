@@ -1,5 +1,4 @@
 #!/usr/bin/env python2
-#
 # blender -P mesh_readply.py -- file.ply
 import sys, os, array, time, gc
 import bpy
@@ -35,9 +34,9 @@ t0 = time.time()
 num_vertices, num_faces, varray, farray, vnarray, vcolarray = readply(fname)
 
 t1 = time.time()
-print('PLY file read in %.3fs' % (t1-t0))
+print('PLY file read by readply() in %.3fs' % (t1-t0))
 
-# Create a mesh + object using the binary vertex and face data
+# Create a mesh + object using the vertex and face data in the numpy arrays
 
 mesh = bpy.data.meshes.new(name='imported mesh')
 
