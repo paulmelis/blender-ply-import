@@ -37,33 +37,35 @@ to easily pass the data directly to Blender.
 Performance
 -----------
 
-The Asian Dragon model [1] from The Stanford 3D Scanning Repository [2]
-consists of 3,609,600 vertices and 7,219,045 triangles.
+Here's some numbers when importing the Asian Dragon model [1] from 
+The Stanford 3D Scanning Repository [2]. This 3D model consists of
+3,609,600 vertices and 7,219,045 triangles.
 
-With Blender 2.76 and xyzrgb_dragon.ply in the filesystem cache:
+With Blender 2.76 and xyzrgb_dragon.ply (already in the filesystem cache):
 
-# Native blender PLY import script
+# Native blender PLY importer
 $ blender -P test/blender_native_import.py -- xyzrgb_dragon.ply
-total                           91.348s
+total                           81.474s
 
 # mesh_readply.py using readply extension module
 $ blender -P mesh_readply.py -- xyzrgb_dragon.ply
-reaply():                        1.439s
-blender mesh+object creation:   18.635s
-total                           20.074s
+reaply():                        0.783s
+blender mesh+object creation:   12.598s
+total                           13.381s
 
-I.e. the mesh_readply.py script (which uses the readply module)
-loads the Dragon model 4.55x faster into Blender.
+I.e. in this test the mesh_readply.py script (which uses the readply 
+module) loads the Dragon model 6.09x faster into Blender than 
+Blender's own PLY import script.
 
+Memory usage also improved substantially, as measured by looking at
+the peak RSS and VMSIZE numbers during the loading:
 
-Memory usage also improved substantially, as measured by valgrind's 
-massif tool [3]:
-
-
+Native blender PLY importer: 4.164 GB (RSS) | 5.036 GB (VMSIZE)
+Using readply module:        1.833 GB (RSS) | 3.227 GB (VMSIZE)
 
 [1] http://graphics.stanford.edu/data/3Dscanrep/xyzrgb/xyzrgb_dragon.ply.gz
 [2] http://graphics.stanford.edu/data/3Dscanrep/
-[3] http://valgrind.org/info/tools.html#massif
+
 
 Notes
 -----
