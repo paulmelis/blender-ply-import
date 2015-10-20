@@ -1,4 +1,5 @@
-readply: a Python extension module for fast importing of PLY files in Blender.
+readply - a Python extension module for fast(er) import of PLY files in Blender
+===============================================================================
 
 Author
 ------
@@ -33,15 +34,17 @@ vertex and face data, without having to build up Python data
 structures. We use NumPy arrays in the read_ply extension module 
 to easily pass the data directly to Blender. 
 
+Note: the readply module is not tied to Blender in any way and can 
+be used as a general PLY reader for Python.
 
 Performance
 -----------
 
-Here's some numbers when importing the Asian Dragon model [1] from 
-The Stanford 3D Scanning Repository [2]. This 3D model consists of
+Below are some numbers when importing the Asian Dragon model ([1]) from 
+The Stanford 3D Scanning Repository ([2]). This 3D model consists of
 3,609,600 vertices and 7,219,045 triangles.
 
-With Blender 2.76 and xyzrgb_dragon.ply (already in the filesystem cache):
+With Blender 2.76 and xyzrgb_dragon.ply already in the filesystem cache:
 
 # Native blender PLY importer
 $ blender -P test/blender_native_import.py -- xyzrgb_dragon.ply
@@ -58,20 +61,30 @@ module) loads the Dragon model 6.09x faster into Blender than
 Blender's own PLY import script.
 
 Memory usage also improved substantially, as measured by looking at
-the peak RSS and VMSIZE numbers during the loading:
+the peak RSS and VSIZE numbers during the loading:
 
-Native blender PLY importer: 4.164 GB (RSS) | 5.036 GB (VMSIZE)
-Using readply module:        1.833 GB (RSS) | 3.227 GB (VMSIZE)
+Native blender PLY importer: 4.164 GB (RSS) | 5.036 GB (VSIZE)
+Using readply module:        1.833 GB (RSS) | 3.227 GB (VSIZE)
+
 
 [1] http://graphics.stanford.edu/data/3Dscanrep/xyzrgb/xyzrgb_dragon.ply.gz
 [2] http://graphics.stanford.edu/data/3Dscanrep/
 
-
 Notes
 -----
 
-- Make sure that the version of numpy used for compiling this
+- Make sure that the version of numpy used for compiling the readply
   extension has the same API version as the one used in Blender.
 - The extension module can be compiled for both Python 2.x and 3.x,
   even though Blender always uses Python 3.x (at least, modern versions
   of Blender do ;-)).
+
+Bugs
+----
+
+- Normals in the PLY are read but nnot passed to Blender yet
+- Texture coordinates are not read from the PLY file
+- Polygons with more than 4 vertices are ignored
+- It is assumed that the PLY file has vertex coordinates defined
+  in x, y and z order (the PLY header allows properties in any order).
+  
