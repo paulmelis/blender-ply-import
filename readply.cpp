@@ -323,11 +323,19 @@ readply(PyObject* self, PyObject* args)
         
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = vertices;
+#if NPY_API_VERSION >= 0x00000007    
     PyArray_SetBaseObject(np_vertices, newobj);
+#else
+    PyArray_BASE(np_vertices) = newobj;
+#endif    
     
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = faces;
+#if NPY_API_VERSION >= 0x00000007        
     PyArray_SetBaseObject(np_faces, newobj);
+#else    
+    PyArray_BASE(np_faces) = newobj;
+#endif    
 
     PyObject *np_vcolors, *np_vnormals;
 
@@ -337,7 +345,11 @@ readply(PyObject* self, PyObject* args)
         
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vertex_normals;
+#if NPY_API_VERSION >= 0x00000007                
         PyArray_SetBaseObject(arr, newobj);
+#else
+        PyArray_BASE(arr) = newobj;
+#endif        
 
         np_vnormals = (PyObject*) arr;
     }
@@ -395,7 +407,11 @@ readply(PyObject* self, PyObject* args)
 
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vcol2;
+#if NPY_API_VERSION >= 0x00000007                       
         PyArray_SetBaseObject(arr, newobj);
+#else
+        PyArray_BASE(arr) = newobj;
+#endif        
 
         np_vcolors = (PyObject*) arr;
     }
