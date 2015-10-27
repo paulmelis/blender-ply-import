@@ -423,7 +423,7 @@ static PyMethodDef ModuleMethods[] =
 
 #if PY_MAJOR_VERSION == 2
 PyMODINIT_FUNC
-initmodule(void)
+initreadply(void)
 {
     (void) Py_InitModule("readply", ModuleMethods);
     import_array();
