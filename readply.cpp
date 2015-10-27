@@ -49,11 +49,7 @@ static PyTypeObject _MyDeallocType =
     "mydeallocator",            /*tp_name*/
     sizeof(_MyDeallocObject),   /*tp_basicsize*/
     0,                          /*tp_itemsize*/
-#if PY_MAJOR_VERSION == 2
-    _mydealloc_dealloc,         /*tp_dealloc*/
-#elif PY_MAJOR_VERSION == 3
-    (destructor)_mydealloc_dealloc,  /*tp_dealloc*/
-#endif
+    (destructor)_mydealloc_dealloc,         /*tp_dealloc*/
     0,                          /*tp_print*/
     0,                          /*tp_getattr*/
     0,                          /*tp_setattr*/
