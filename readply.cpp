@@ -86,6 +86,11 @@ static float    *vertex_colors = NULL;
 static int      next_vertex_color_element_offset;
 static float    vertex_color_scale_factor;
 
+static float    *vertex_texcoords = NULL;
+static int      next_vertex_texcoord_element_offset;
+
+// Vertex callbacks
+
 static int
 vertex_cb(p_ply_argument argument)
 {
@@ -112,6 +117,17 @@ vertex_normal_cb(p_ply_argument argument)
 
     return 1;
 }
+
+static int
+vertex_texcoord_cb(p_ply_argument argument)
+{
+    vertex_texcoords[next_vertex_texcoord_element_offset] = ply_get_argument_value(argument);
+    next_vertex_texcoord_element_offset++;
+
+    return 1;
+}
+
+// Face callback
 
 static int
 face_cb(p_ply_argument argument)
@@ -165,6 +181,8 @@ face_cb(p_ply_argument argument)
 
     return 1;
 }
+
+// Main Python function
 
 static PyObject*
 readply(PyObject* self, PyObject* args)
@@ -227,6 +245,7 @@ readply(PyObject* self, PyObject* args)
 
     bool            have_vertex_colors = false;
     bool            have_vertex_normals = false;
+    bool            have_vertex_texcoords = false;      // Either s,t or u,v sets will be used, but not both
 
     p_ply_property  prop;
     e_ply_type      ptype, plength_type, pvalue_type;
@@ -261,6 +280,20 @@ readply(PyObject* self, PyObject* args)
             ply_set_read_cb(ply, "vertex", "ny", vertex_normal_cb, NULL, 0);
             ply_set_read_cb(ply, "vertex", "nz", vertex_normal_cb, NULL, 1);
         }
+        else if (strcmp(name, "s") == 0 && !have_vertex_texcoords)
+        {
+            have_vertex_texcoords = true;
+            
+            ply_set_read_cb(ply, "vertex", "s", vertex_texcoord_cb, NULL, 0);
+            ply_set_read_cb(ply, "vertex", "t", vertex_texcoord_cb, NULL, 1);            
+        }
+        else if (strcmp(name, "u") == 0 && !have_vertex_texcoords)
+        {
+            have_vertex_texcoords = true;
+            
+            ply_set_read_cb(ply, "vertex", "u", vertex_texcoord_cb, NULL, 0);
+            ply_set_read_cb(ply, "vertex", "v", vertex_texcoord_cb, NULL, 1);            
+        }
 
         prop = ply_get_next_property(vertex_element, prop);
     }
@@ -284,6 +317,12 @@ readply(PyObject* self, PyObject* args)
         vertex_colors = (float*) malloc(sizeof(float)*nvertices*3);
         next_vertex_color_element_offset = 0;
     }
+    
+    if (have_vertex_texcoords)
+    {
+        vertex_texcoords = (float*) malloc(sizeof(float)*nvertices*2);
+        next_vertex_texcoord_element_offset = 0;
+    }
 
     // Let rply process the file using the callbacks we set
 
@@ -300,17 +339,21 @@ readply(PyObject* self, PyObject* args)
             free(vertex_normals);
         if (have_vertex_colors)
             free(vertex_colors);
+        if (have_vertex_texcoords)
+            free(vertex_texcoords);
 
         return NULL;
     }
 
     printf("%d triangles, %d quads\n", num_triangles, num_quads);
 
-    // Clean up
+    // Clean up PLY reader
 
     ply_close(ply);
 
+    //
     // Create return value objects
+    //
 
     npy_intp    np_vertices_dims[1] = { nvertices*3 };
     npy_intp    np_faces_dims[1] = { nfaces*4 };
@@ -329,7 +372,9 @@ readply(PyObject* self, PyObject* args)
     ((_MyDeallocObject *)newobj)->memory = faces;
     PyArray_SetBaseObject(np_faces, newobj);
 
-    PyObject *np_vcolors, *np_vnormals;
+    // Optional per-vertex arrays
+    
+    PyObject *np_vcolors, *np_vnormals, *np_vtexcoords;
 
     if (have_vertex_normals)
     {
@@ -406,9 +451,26 @@ readply(PyObject* self, PyObject* args)
         Py_XINCREF(np_vcolors);
     }
     
+    if (have_vertex_texcoords)
+    {
+        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_texcoords);
+        
+        newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
+        ((_MyDeallocObject *)newobj)->memory = vertex_texcoords;
+        PyArray_SetBaseObject(arr, newobj);
+
+        np_vtexcoords = (PyObject*) arr;
+    }
+    else
+    {
+        // No texture coords
+        np_vtexcoords = Py_None;
+        Py_XINCREF(np_vtexcoords);
+    }
+    
     // Return the stuff!
 
-    return Py_BuildValue("(iiNNNN)",  nvertices, nfaces, np_vertices, np_faces, np_vnormals, np_vcolors);
+    return Py_BuildValue("(iiNNNNN)",  nvertices, nfaces, np_vertices, np_faces, np_vnormals, np_vcolors, np_vtexcoords);
 }
 
 // Python module stuff

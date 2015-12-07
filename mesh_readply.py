@@ -3,6 +3,8 @@
 import sys, os, array, time, gc
 import bpy
 
+# For uv coordinate handling, see http://blender.stackexchange.com/questions/4820/exporting-uv-coordinates
+
 sys.path.insert(0, '.') 
 try:
     from readply import readply
@@ -31,7 +33,7 @@ if len(args) > 0:
 
 t0 = time.time()
 
-num_vertices, num_faces, varray, farray, vnarray, vcolarray = readply(fname)
+num_vertices, num_faces, varray, farray, vnarray, vcolarray, vtexcoordarray = readply(fname)
 
 t1 = time.time()
 print('PLY file read by readply() in %.3fs' % (t1-t0))
@@ -72,6 +74,9 @@ if vcolarray is not None:
 
 if vnarray is not None:
     print('Warning: vertex normals read from .ply file, but NOT applying vertex normals to blender object (yet)!')
+
+if vtexcoordarray is not None:
+    print('Warning: vertex texcoords read from .ply file, but NOT applying vertex texture coordinates to blender object (yet)!')
     
 mesh.validate()
 mesh.update()
