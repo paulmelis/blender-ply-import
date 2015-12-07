@@ -170,7 +170,7 @@ face_cb(p_ply_argument argument)
         // We should cycle the indices to move the 0 out of the last place,
         // as it would otherwise get interpreted as a triangle.
         // XXX do this as a post-process, as we also need to reorder
-        // vertex colors, normals, texcoords. I.e. flag the quad as
+        // per-vertex colors, normals, texcoords. I.e. flag the quad as
         // needing reordering and process all arrays later, not here.
         const int firstidx = next_face_element_offset-4;
         faces[firstidx+3] = faces[firstidx+2];
@@ -283,16 +283,16 @@ readply(PyObject* self, PyObject* args)
         else if (strcmp(name, "s") == 0 && !have_vertex_texcoords)
         {
             have_vertex_texcoords = true;
-            
+
             ply_set_read_cb(ply, "vertex", "s", vertex_texcoord_cb, NULL, 0);
-            ply_set_read_cb(ply, "vertex", "t", vertex_texcoord_cb, NULL, 1);            
+            ply_set_read_cb(ply, "vertex", "t", vertex_texcoord_cb, NULL, 1);
         }
         else if (strcmp(name, "u") == 0 && !have_vertex_texcoords)
         {
             have_vertex_texcoords = true;
-            
+
             ply_set_read_cb(ply, "vertex", "u", vertex_texcoord_cb, NULL, 0);
-            ply_set_read_cb(ply, "vertex", "v", vertex_texcoord_cb, NULL, 1);            
+            ply_set_read_cb(ply, "vertex", "v", vertex_texcoord_cb, NULL, 1);
         }
 
         prop = ply_get_next_property(vertex_element, prop);
@@ -317,7 +317,7 @@ readply(PyObject* self, PyObject* args)
         vertex_colors = (float*) malloc(sizeof(float)*nvertices*3);
         next_vertex_color_element_offset = 0;
     }
-    
+
     if (have_vertex_texcoords)
     {
         vertex_texcoords = (float*) malloc(sizeof(float)*nvertices*2);
@@ -360,41 +360,41 @@ readply(PyObject* self, PyObject* args)
 
     PyObject *newobj;
 
-    // XXX check for NULL in return of PyArray_SimpleNewFromData() and PyObject_New()    
+    // XXX check for NULL in return of PyArray_SimpleNewFromData() and PyObject_New()
     PyArrayObject *np_vertices = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);
     PyArrayObject *np_faces = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);
-        
+
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = vertices;
-#if NPY_API_VERSION >= 0x00000007    
+#if NPY_API_VERSION >= 0x00000007
     PyArray_SetBaseObject(np_vertices, newobj);
 #else
     PyArray_BASE(np_vertices) = newobj;
-#endif    
-    
+#endif
+
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = faces;
-#if NPY_API_VERSION >= 0x00000007        
+#if NPY_API_VERSION >= 0x00000007
     PyArray_SetBaseObject(np_faces, newobj);
-#else    
+#else
     PyArray_BASE(np_faces) = newobj;
-#endif    
+#endif
 
     // Optional per-vertex arrays
-    
+
     PyObject *np_vcolors, *np_vnormals, *np_vtexcoords;
 
     if (have_vertex_normals)
     {
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_normals);
-        
+
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vertex_normals;
-#if NPY_API_VERSION >= 0x00000007                
+#if NPY_API_VERSION >= 0x00000007
         PyArray_SetBaseObject(arr, newobj);
 #else
         PyArray_BASE(arr) = newobj;
-#endif        
+#endif
 
         np_vnormals = (PyObject*) arr;
     }
@@ -452,11 +452,11 @@ readply(PyObject* self, PyObject* args)
 
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vcol2;
-#if NPY_API_VERSION >= 0x00000007                       
+#if NPY_API_VERSION >= 0x00000007
         PyArray_SetBaseObject(arr, newobj);
 #else
         PyArray_BASE(arr) = newobj;
-#endif        
+#endif
 
         np_vcolors = (PyObject*) arr;
     }
@@ -466,11 +466,13 @@ readply(PyObject* self, PyObject* args)
         np_vcolors = Py_None;
         Py_XINCREF(np_vcolors);
     }
-    
+
     if (have_vertex_texcoords)
     {
-        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_texcoords);
-        
+        npy_intp    np_vertex_texcoords_dims[1] = { nvertices*2 };
+
+        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertex_texcoords_dims, NPY_FLOAT, vertex_texcoords);
+
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vertex_texcoords;
         PyArray_SetBaseObject(arr, newobj);
@@ -483,7 +485,7 @@ readply(PyObject* self, PyObject* args)
         np_vtexcoords = Py_None;
         Py_XINCREF(np_vtexcoords);
     }
-    
+
     // Return the stuff!
 
     return Py_BuildValue("(iiNNNNN)",  nvertices, nfaces, np_vertices, np_faces, np_vnormals, np_vcolors, np_vtexcoords);
