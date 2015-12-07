@@ -5,6 +5,7 @@ TODO:
 - we assume property order in the file is always x,y,z. Need good way to handle other orders
 - add parameter to specify if returned vertex color array is
   blender-style (color per vertex per face) or plain per-vertex
+- comment out printf()s
 */
 
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
@@ -333,8 +334,10 @@ readply(PyObject* self, PyObject* args)
         PyErr_SetString(PyExc_IOError, "Could not read PLY data");
 
         ply_close(ply);
+
         free(vertices);
         free(faces);
+
         if (have_vertex_normals)
             free(vertex_normals);
         if (have_vertex_colors)
