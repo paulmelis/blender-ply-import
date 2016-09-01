@@ -531,9 +531,19 @@ readply(PyObject* self, PyObject* args)
 
 // Python module stuff
 
+static char readply_func_doc[] = 
+"readply_func_doc(plyfile)\n\
+\n\
+Reads a .PLY file. Returns a tuple:\n\
+(num_vertices, num_faces, vertices, faces, vertex_normals, vertex_colors, vertex_tex_coords)\n\
+\n\
+The first two values will be integers, the remaining ones will be 1-dimensional Numpy arrays.\n\
+Any of vertex_normals, vertex_colors and vertex_tex_coords will be None if the respective\n\
+model element was not present in the PLY file.\n";
+
 static PyMethodDef ModuleMethods[] =
-{
-     {"readply", readply, METH_VARARGS, ""},
+{    
+     {"readply", readply, METH_VARARGS, readply_func_doc},
      {NULL, NULL, 0, NULL}
 };
 
