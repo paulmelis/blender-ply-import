@@ -16,6 +16,8 @@ TODO:
 #include <cstdio>
 #include <cassert>
 
+//#define DEBUG
+
 //
 // Custom object type to handle correct deallocation
 // After http://blog.enthought.com/general/numpy-arrays-with-pre-allocated-memory/
@@ -25,13 +27,27 @@ typedef struct
 {
     PyObject_HEAD
     void *memory;
+#ifdef DEBUG
+    const char *name;
+#endif
 }
 _MyDeallocObject;
 
 static void
 _mydealloc_dealloc(_MyDeallocObject *self)
 {
+#ifdef DEBUG
+    fprintf(stderr, "_mydealloc_dealloc() on '%s'\n", self->name);
+    if (self->memory == NULL)
+        fprintf(stderr, "self->memory == NULL!\n");
+#endif
+    
     free(self->memory);
+
+#ifdef DEBUG
+    fprintf(stderr, "Calling python type free()\n");
+#endif    
+    
 #if PY_MAJOR_VERSION == 2
     self->ob_type->tp_free((PyObject*)self);
 #elif PY_MAJOR_VERSION == 3
@@ -167,10 +183,10 @@ face_cb(p_ply_argument argument)
     }
     else if (length == 4 && value_index == 3 && vertex_index == 0)
     {
-        // Handle the case when there is a quad that has indices i, j, k, 0.
+        // XXX Handle the case when there is a quad that has indices i, j, k, 0.
         // We should cycle the indices to move the 0 out of the last place,
         // as it would otherwise get interpreted as a triangle.
-        // XXX do this as a post-process, as we also need to reorder
+        // Do this as a post-process, as we also need to reorder
         // per-vertex colors, normals, texcoords. I.e. flag the quad as
         // needing reordering and process all arrays later, not here.
         const int firstidx = next_face_element_offset-4;
@@ -369,6 +385,9 @@ readply(PyObject* self, PyObject* args)
 
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = vertices;
+#ifdef DEBUG
+    ((_MyDeallocObject *)newobj)->name = strdup("vertices"); 
+#endif
 #if NPY_API_VERSION >= 0x00000007
     PyArray_SetBaseObject(np_vertices, newobj);
 #else
@@ -377,6 +396,9 @@ readply(PyObject* self, PyObject* args)
 
     newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     ((_MyDeallocObject *)newobj)->memory = faces;
+#ifdef DEBUG
+    ((_MyDeallocObject *)newobj)->name = strdup("faces"); 
+#endif
 #if NPY_API_VERSION >= 0x00000007
     PyArray_SetBaseObject(np_faces, newobj);
 #else
@@ -393,6 +415,9 @@ readply(PyObject* self, PyObject* args)
 
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vertex_normals;
+#ifdef DEBUG
+    ((_MyDeallocObject *)newobj)->name = strdup("vertex_normals"); 
+#endif
 #if NPY_API_VERSION >= 0x00000007
         PyArray_SetBaseObject(arr, newobj);
 #else
@@ -455,6 +480,9 @@ readply(PyObject* self, PyObject* args)
 
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vcol2;
+#ifdef DEBUG
+        ((_MyDeallocObject *)newobj)->name = strdup("vertex_colors"); 
+#endif
 #if NPY_API_VERSION >= 0x00000007
         PyArray_SetBaseObject(arr, newobj);
 #else
@@ -478,7 +506,14 @@ readply(PyObject* self, PyObject* args)
 
         newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
         ((_MyDeallocObject *)newobj)->memory = vertex_texcoords;
+#ifdef DEBUG
+        ((_MyDeallocObject *)newobj)->name = strdup("vertex_texcoords"); 
+#endif        
+#if NPY_API_VERSION >= 0x00000007
         PyArray_SetBaseObject(arr, newobj);
+#else
+        PyArray_BASE(arr) = newobj;
+#endif
 
         np_vtexcoords = (PyObject*) arr;
     }
@@ -508,6 +543,9 @@ static PyMethodDef ModuleMethods[] =
 PyMODINIT_FUNC
 initreadply(void)
 {
+    if (PyType_Ready(&_MyDeallocType) < 0)
+        return;
+    
     (void) Py_InitModule("readply", ModuleMethods);
     import_array();
 }
