@@ -84,6 +84,23 @@ static PyTypeObject _MyDeallocType =
     "Internal deallocator object",  /* tp_doc */
 };
 
+static void 
+_set_base_object(PyArrayObject *arrobj, void *memory, const char *name)
+{
+    PyObject *newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
+    
+    ((_MyDeallocObject *)newobj)->memory = memory;
+#ifdef DEBUG
+    ((_MyDeallocObject *)newobj)->name = strdup(name); 
+#endif
+    
+#if NPY_API_VERSION >= 0x00000007
+    PyArray_SetBaseObject(arrobj, newobj);
+#else
+    PyArray_BASE(arrobj) = newobj;
+#endif
+}
+
 //
 // rply stuff (arrays and callbacks)
 //
@@ -92,6 +109,8 @@ static float    *vertices = NULL;
 static int      next_vertex_element_offset;
 
 static int      *faces = NULL;
+static int      *triangles = NULL;
+static int      *quads = NULL;
 static int      next_face_element_offset;
 static int      num_triangles, num_quads;
 
@@ -201,12 +220,17 @@ face_cb(p_ply_argument argument)
 // Main Python function
 
 static PyObject*
-readply(PyObject* self, PyObject* args)
+readply(PyObject* self, PyObject* args, PyObject *kwds)
 {
-    const char *fname;
+    char    *fname;
+    int     blender_face_indices = 1;
+    
+    static char *kwlist[] = {"plyfile", "blender_face_indices", NULL};
 
-    if (!PyArg_ParseTuple(args, "s", &fname))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|i", kwlist, &fname, &blender_face_indices))
         return NULL;
+    
+    // Open PLY file
 
     p_ply ply = ply_open(fname, NULL, 0, NULL);
     if (!ply)
@@ -377,36 +401,67 @@ readply(PyObject* self, PyObject* args)
     // Create return value objects
     //
 
-    npy_intp    np_vertices_dims[1] = { nvertices*3 };
-    npy_intp    np_faces_dims[1] = { nfaces*4 };
-
-    PyObject *newobj;
-
+    // Vertices
+    
+    npy_intp np_vertices_dims[1] = { nvertices*3 };
     // XXX check for NULL in return of PyArray_SimpleNewFromData() and PyObject_New()
-    PyArrayObject *np_vertices = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);
-    PyArrayObject *np_faces = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);
+    PyArrayObject *np_vertices = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);    
+    _set_base_object(np_vertices, vertices, "vertices");
 
-    newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
-    ((_MyDeallocObject *)newobj)->memory = vertices;
-#ifdef DEBUG
-    ((_MyDeallocObject *)newobj)->name = strdup("vertices"); 
-#endif
-#if NPY_API_VERSION >= 0x00000007
-    PyArray_SetBaseObject(np_vertices, newobj);
-#else
-    PyArray_BASE(np_vertices) = newobj;
-#endif
-
-    newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
-    ((_MyDeallocObject *)newobj)->memory = faces;
-#ifdef DEBUG
-    ((_MyDeallocObject *)newobj)->name = strdup("faces"); 
-#endif
-#if NPY_API_VERSION >= 0x00000007
-    PyArray_SetBaseObject(np_faces, newobj);
-#else
-    PyArray_BASE(np_faces) = newobj;
-#endif
+    // Faces
+    
+    PyObject *np_faces;
+    
+    if (blender_face_indices)
+    {
+        // 4 indices per face, triangles always have fourth index of 0
+        npy_intp np_faces_dims[1] = { nfaces*4 };
+        np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);
+        _set_base_object((PyArrayObject*)np_faces, faces, "faces");
+    }
+    else
+    {
+        // Separate arrays of vertices and triangles
+        
+        triangles = (int*) malloc(sizeof(int)*num_triangles*3);
+        quads = (int*) malloc(sizeof(int)*num_quads*4);
+        
+        const int *face = faces;
+        int *triangle = triangles;
+        int *quad = quads;
+        for (int f = 0; f < nfaces; f++)
+        {
+            if (face[3] == 0)
+            {
+                // Triangle
+                triangle[0] = face[0];
+                triangle[1] = face[1];
+                triangle[2] = face[2];
+                triangle += 3;
+            }
+            else
+            {
+                // Quad
+                quad[0] = face[0];
+                quad[1] = face[1];
+                quad[2] = face[2];
+                quad[3] = face[3];
+                quad += 4;
+            }
+            face += 4;
+        }
+        free(faces);
+        
+        npy_intp np_triangles_dims[1] = { num_triangles*3 };
+        PyArrayObject *np_triangles = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_triangles_dims, NPY_INT, triangles);
+        _set_base_object(np_triangles, triangles, "triangles");
+        
+        npy_intp np_quads_dims[1] = { num_quads*4 };
+        PyArrayObject *np_quads = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_quads_dims, NPY_INT, quads);
+        _set_base_object(np_quads, quads, "quads");
+        
+        np_faces = Py_BuildValue("(NN)", (PyObject*)np_triangles, (PyObject*)np_quads);
+    }
 
     // Optional per-vertex arrays
 
@@ -415,18 +470,7 @@ readply(PyObject* self, PyObject* args)
     if (have_vertex_normals)
     {
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_normals);
-
-        newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
-        ((_MyDeallocObject *)newobj)->memory = vertex_normals;
-#ifdef DEBUG
-    ((_MyDeallocObject *)newobj)->name = strdup("vertex_normals"); 
-#endif
-#if NPY_API_VERSION >= 0x00000007
-        PyArray_SetBaseObject(arr, newobj);
-#else
-        PyArray_BASE(arr) = newobj;
-#endif
-
+        _set_base_object(arr, vertex_normals, "vertex_normals");
         np_vnormals = (PyObject*) arr;
     }
     else
@@ -479,19 +523,8 @@ readply(PyObject* self, PyObject* args)
         free(vertex_colors);
 
         npy_intp    dims[1] = { n };
-        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, vcol2);
-
-        newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
-        ((_MyDeallocObject *)newobj)->memory = vcol2;
-#ifdef DEBUG
-        ((_MyDeallocObject *)newobj)->name = strdup("vertex_colors"); 
-#endif
-#if NPY_API_VERSION >= 0x00000007
-        PyArray_SetBaseObject(arr, newobj);
-#else
-        PyArray_BASE(arr) = newobj;
-#endif
-
+        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, vcol2);        
+        _set_base_object(arr, vcol2, "vertex_colors");
         np_vcolors = (PyObject*) arr;
     }
     else
@@ -506,18 +539,7 @@ readply(PyObject* self, PyObject* args)
         npy_intp    np_vertex_texcoords_dims[1] = { nvertices*2 };
 
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertex_texcoords_dims, NPY_FLOAT, vertex_texcoords);
-
-        newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
-        ((_MyDeallocObject *)newobj)->memory = vertex_texcoords;
-#ifdef DEBUG
-        ((_MyDeallocObject *)newobj)->name = strdup("vertex_texcoords"); 
-#endif        
-#if NPY_API_VERSION >= 0x00000007
-        PyArray_SetBaseObject(arr, newobj);
-#else
-        PyArray_BASE(arr) = newobj;
-#endif
-
+        _set_base_object(arr, vertex_texcoords, "vertex_texcoords");
         np_vtexcoords = (PyObject*) arr;
     }
     else
@@ -535,7 +557,7 @@ readply(PyObject* self, PyObject* args)
 // Python module stuff
 
 static char readply_func_doc[] = 
-"readply_func_doc(plyfile)\n\
+"readply_func_doc(plyfile, blender_face_indices=True)\n\
 \n\
 Reads a .PLY file. Returns a tuple:\n\
 (num_vertices, num_faces, vertices, faces, vertex_normals, vertex_colors, vertex_tex_coords)\n\
@@ -550,7 +572,7 @@ Faces with more than 4 vertices are currently not supported.";
 
 static PyMethodDef ModuleMethods[] =
 {    
-     {"readply", readply, METH_VARARGS, readply_func_doc},
+     {"readply", (PyCFunction)readply, METH_VARARGS|METH_KEYWORDS, readply_func_doc},
      {NULL, NULL, 0, NULL}
 };
 
