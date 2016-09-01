@@ -5,6 +5,8 @@ TODO:
 - add parameter to specify if returned vertex color array is
   blender-style (color per vertex per face) or plain per-vertex
 - comment out printf()s
+- double-check that we are really ignoring faces with >4 vertices. 
+  It seems indices of such a face *are* added to the index list...
 */
 
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
@@ -174,8 +176,9 @@ face_cb(p_ply_argument argument)
 
     if (value_index == -1)
     {
+        // First value of a list property, the one that gives the number of entries
         if (length > 4)
-            fprintf(stderr, "Warning: ignored face with %ld vertices!\n", length);
+            fprintf(stderr, "Warning: ignoring face with %ld vertices!\n", length);
         else if (length == 3)
             num_triangles++;
         else if (length == 4)
@@ -201,7 +204,7 @@ face_cb(p_ply_argument argument)
     }
     else if (length == 4 && value_index == 3 && vertex_index == 0)
     {
-        // XXX Handle the case when there is a quad that has indices i, j, k, 0.
+        // Handle the case when there is a quad that has indices i, j, k, 0.
         // We should cycle the indices to move the 0 out of the last place,
         // as it would otherwise get interpreted as a triangle.
         const int firstidx = next_face_element_offset-4;
