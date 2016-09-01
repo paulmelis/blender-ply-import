@@ -156,7 +156,7 @@ face_cb(p_ply_argument argument)
     if (value_index == -1)
     {
         if (length > 4)
-            printf("Warning: ignoring face with %ld vertices!\n", length);
+            fprintf(stderr, "Warning: ignored face with %ld vertices!\n", length);
         else if (length == 3)
             num_triangles++;
         else if (length == 4)
@@ -245,7 +245,9 @@ readply(PyObject* self, PyObject* args)
     assert(vertex_element && "Don't have a vertex element");
     assert(face_element && "Don't have a face element");
 
-    // Set vertex and face callbacks
+    // Set vertex and face property callbacks
+    
+    // 3D coordinates
 
     long nvertices, nfaces;
 
@@ -257,7 +259,7 @@ readply(PyObject* self, PyObject* args)
 
     printf("%ld vertices\n%ld faces\n", nvertices, nfaces);
 
-    // Set optional callbacks
+    // Set optional per-vertex callbacks
 
     bool            have_vertex_colors = false;
     bool            have_vertex_normals = false;
@@ -314,7 +316,7 @@ readply(PyObject* self, PyObject* args)
         prop = ply_get_next_property(vertex_element, prop);
     }
 
-    // Allocate memory, initialize
+    // Allocate memory and initialize
 
     vertices = (float*) malloc(sizeof(float)*nvertices*3);
     next_vertex_element_offset = 0;
@@ -346,6 +348,8 @@ readply(PyObject* self, PyObject* args)
 
     if (!ply_read(ply))
     {
+        // Failed!
+        
         PyErr_SetString(PyExc_IOError, "Could not read PLY data");
 
         ply_close(ply);
