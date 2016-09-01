@@ -204,9 +204,6 @@ face_cb(p_ply_argument argument)
         // XXX Handle the case when there is a quad that has indices i, j, k, 0.
         // We should cycle the indices to move the 0 out of the last place,
         // as it would otherwise get interpreted as a triangle.
-        // Do this as a post-process, as we also need to reorder
-        // per-vertex colors, normals, texcoords. I.e. flag the quad as
-        // needing reordering and process all arrays later, not here.
         const int firstidx = next_face_element_offset-4;
         faces[firstidx+3] = faces[firstidx+2];
         faces[firstidx+2] = faces[firstidx+1];
