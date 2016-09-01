@@ -1,7 +1,6 @@
 /*
 TODO:
 - need to handle faces with more than 4 vertices
-- handle texture coordinates (are they named (s, t) OR (u,v) in the header?)
 - we assume property order in the file is always x,y,z. Need good way to handle other orders
 - add parameter to specify if returned vertex color array is
   blender-style (color per vertex per face) or plain per-vertex
@@ -539,7 +538,11 @@ Reads a .PLY file. Returns a tuple:\n\
 \n\
 The first two values will be integers, the remaining ones will be 1-dimensional Numpy arrays.\n\
 Any of vertex_normals, vertex_colors and vertex_tex_coords will be None if the respective\n\
-model element was not present in the PLY file.\n";
+model element was not present in the PLY file.\n\
+\n\
+The faces array uses the Blender vertices_raw convention of using *four indices per face*,\n\
+regardless if the face is a triangle or quad. In case of a triangle the first index will be 0. \n\
+Faces with more than 4 vertices are currently not supported.";
 
 static PyMethodDef ModuleMethods[] =
 {    
