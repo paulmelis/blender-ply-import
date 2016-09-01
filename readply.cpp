@@ -562,13 +562,19 @@ static char readply_func_doc[] =
 Reads a .PLY file. Returns a tuple:\n\
 (num_vertices, num_faces, vertices, faces, vertex_normals, vertex_colors, vertex_tex_coords)\n\
 \n\
-The first two values will be integers, the remaining ones will be 1-dimensional Numpy arrays.\n\
+The first two values will be integers, the remaining ones will be 1-dimensional Numpy arrays,\n\
+except faces, which may also be a tuple of two 1-dimensional Numpy arrays.\n\
 Any of vertex_normals, vertex_colors and vertex_tex_coords will be None if the respective\n\
 model element was not present in the PLY file.\n\
 \n\
-The faces array uses the Blender vertices_raw convention of using *four indices per face*,\n\
-regardless if the face is a triangle or quad. In case of a triangle the first index will be 0. \n\
-Faces with more than 4 vertices are currently not supported.";
+If blender_face_indices is True (the default), the faces array uses the Blender vertices_raw\n\
+convention of using *four indices per face*, regardless if the face is a triangle or quad. In \n\
+case of a triangle the first index will be 0. \n\
+\n\
+If blender_face_indices is False, faces will be a 2-tuple of arrays, one with\n\
+indices for triangles and one for quads.\n\
+\n\
+Note: Faces with more than 4 vertices are currently not supported.";
 
 static PyMethodDef ModuleMethods[] =
 {    
