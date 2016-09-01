@@ -89,6 +89,7 @@ static PyTypeObject _MyDeallocType =
 static void 
 _set_base_object(PyArrayObject *arrobj, void *memory, const char *name)
 {
+    // XXX check for NULL in return of PyObject_New()
     PyObject *newobj = (PyObject*)PyObject_New(_MyDeallocObject, &_MyDeallocType);
     
     ((_MyDeallocObject *)newobj)->memory = memory;
@@ -297,10 +298,11 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     {
         ply_get_property_info(prop, &name, &ptype, &plength_type, &pvalue_type);
 
-        printf("%s\n", name);
+        printf("property '%s'\n", name);
 
         if (strcmp(name, "red") == 0)
         {
+            // Assumes green and blue properties are also available
             have_vertex_colors = true;
 
             if (ptype == PLY_UCHAR)
@@ -316,6 +318,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         }
         else if (strcmp(name, "nx") == 0)
         {
+            // Assumes ny and nz properties are also available
             have_vertex_normals = true;
 
             ply_set_read_cb(ply, "vertex", "nx", vertex_normal_cb, NULL, 0);
@@ -324,6 +327,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         }
         else if (strcmp(name, "s") == 0 && !have_vertex_texcoords)
         {
+            // Assumes t property is also available
             have_vertex_texcoords = true;
 
             ply_set_read_cb(ply, "vertex", "s", vertex_texcoord_cb, NULL, 0);
@@ -331,6 +335,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         }
         else if (strcmp(name, "u") == 0 && !have_vertex_texcoords)
         {
+            // Assumes v property is also available
             have_vertex_texcoords = true;
 
             ply_set_read_cb(ply, "vertex", "u", vertex_texcoord_cb, NULL, 0);
@@ -404,7 +409,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     // Vertices
     
     npy_intp np_vertices_dims[1] = { nvertices*3 };
-    // XXX check for NULL in return of PyArray_SimpleNewFromData() and PyObject_New()
+    // XXX check for NULL in return of PyArray_SimpleNewFromData()
     PyArrayObject *np_vertices = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);    
     _set_base_object(np_vertices, vertices, "vertices");
 
@@ -414,6 +419,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     
     if (blender_face_indices)
     {
+        // Single array holding both triangles and quads.
         // 4 indices per face, triangles always have fourth index of 0
         npy_intp np_faces_dims[1] = { nfaces*4 };
         np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);
