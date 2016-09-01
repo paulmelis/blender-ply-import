@@ -22,10 +22,10 @@ See rply/LICENSE for the the license of the RPly sources.
 Rationale
 ---------
 
-The default PLY importer in Blender (or any Python-based import script
-in Blender for that matter) is slow. This is because during import 
+The default PLY importer in Blender is slow (or any Python-based import 
+script in Blender for that matter). This is because during import 
 Python data structures are built up holding all geometry, vertex colors, 
-etc.
+etc. This simply takes quite a lot of time (and memory).
 
 Fortunately, in foreach_getset() in source/blender/python/intern/bpy_rna.c 
 if the passed object may support the buffer protocol.
