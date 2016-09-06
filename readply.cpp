@@ -574,8 +574,8 @@ Any of vertex_normals, vertex_colors and vertex_tex_coords will be None if the r
 model element was not present in the PLY file.\n\
 \n\
 If blender_face_indices is True (the default), the faces array uses the Blender vertices_raw\n\
-convention of using *four indices per face*, regardless if the face is a triangle or quad. In \n\
-case of a triangle the first index will be 0. \n\
+convention of using *four indices per face*, regardless of whether the face is a triangle or quad.\n\
+In case of a triangle the last index will be 0.\n\
 \n\
 If blender_face_indices is False, faces will be a 2-tuple of arrays, one with\n\
 indices for triangles and one for quads.\n\
