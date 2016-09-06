@@ -1,5 +1,6 @@
 /*
 TODO:
+- check why we return triangle/quad indices as int32 arrays, and not uint32
 - need to handle faces with more than 4 vertices
 - we assume property order in the file is always x,y,z. Need good way to handle other orders
 - add parameter to specify if returned vertex color array is
