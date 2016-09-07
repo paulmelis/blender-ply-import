@@ -283,7 +283,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
     nfaces = ply_set_read_cb(ply, "face", "vertex_indices", face_cb, NULL, 0);
 
-    printf("%ld vertices\n%ld faces\n", nvertices, nfaces);
+    //printf("%ld vertices\n%ld faces\n", nvertices, nfaces);
 
     // Set optional per-vertex callbacks
 
@@ -299,7 +299,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     {
         ply_get_property_info(prop, &name, &ptype, &plength_type, &pvalue_type);
 
-        printf("property '%s'\n", name);
+        //printf("property '%s'\n", name);
 
         if (strcmp(name, "red") == 0)
         {
@@ -311,7 +311,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
             else if (ptype == PLY_FLOAT)
                 vertex_color_scale_factor = 1.0;
             else
-                printf("Warning: vertex color value type is %d, don't know how to handle!\n", ptype);
+                fprintf(stderr, "Warning: vertex color value type is %d, don't know how to handle!\n", ptype);
 
             ply_set_read_cb(ply, "vertex", "red", vertex_color_cb, NULL, 0);
             ply_set_read_cb(ply, "vertex", "green", vertex_color_cb, NULL, 0);
@@ -397,7 +397,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         return NULL;
     }
 
-    printf("%d triangles, %d quads\n", num_triangles, num_quads);
+    //printf("%d triangles, %d quads\n", num_triangles, num_quads);
 
     // Clean up PLY reader
 
