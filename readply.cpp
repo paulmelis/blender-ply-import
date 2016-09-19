@@ -1,6 +1,5 @@
 /*
 TODO:
-- check why we return triangle/quad indices as int32 arrays, and not uint32
 - need to handle faces with more than 4 vertices
 - we assume property order in the file is always x,y,z. Need good way to handle other orders
 - add parameter to specify if returned vertex color array is
@@ -112,9 +111,9 @@ _set_base_object(PyArrayObject *arrobj, void *memory, const char *name)
 static float    *vertices = NULL;
 static int      next_vertex_element_offset;
 
-static int      *faces = NULL;
-static int      *triangles = NULL;
-static int      *quads = NULL;
+static uint32_t *faces = NULL;
+static uint32_t *triangles = NULL;
+static uint32_t *quads = NULL;
 static int      next_face_element_offset;
 static int      num_triangles, num_quads;
 
@@ -189,6 +188,7 @@ face_cb(p_ply_argument argument)
         return 1;
     }
 
+    // XXX check what happens when length > 4 here, seems we DON'T ignore those faces
     vertex_index = ply_get_argument_value(argument);
     faces[next_face_element_offset] = vertex_index;
     next_face_element_offset++;
@@ -273,8 +273,6 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
     // Set vertex and face property callbacks
     
-    // 3D coordinates
-
     long nvertices, nfaces;
 
     nvertices = ply_set_read_cb(ply, "vertex", "x", vertex_cb, NULL, 0);
@@ -346,12 +344,12 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         prop = ply_get_next_property(vertex_element, prop);
     }
 
-    // Allocate memory and initialize
+    // Allocate memory and initialize some values
 
     vertices = (float*) malloc(sizeof(float)*nvertices*3);
     next_vertex_element_offset = 0;
 
-    faces = (int*) malloc(sizeof(int)*nfaces*4);
+    faces = (uint32_t*) malloc(sizeof(uint32_t)*nfaces*4);
     next_face_element_offset = 0;
 
     if (have_vertex_normals)
@@ -423,19 +421,19 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         // Single array holding both triangles and quads.
         // 4 indices per face, triangles always have fourth index of 0
         npy_intp np_faces_dims[1] = { nfaces*4 };
-        np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_INT, faces);
+        np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_UINT32, faces);
         _set_base_object((PyArrayObject*)np_faces, faces, "faces");
     }
     else
     {
         // Separate arrays of vertices and triangles
         
-        triangles = (int*) malloc(sizeof(int)*num_triangles*3);
-        quads = (int*) malloc(sizeof(int)*num_quads*4);
+        triangles = (uint32_t*) malloc(sizeof(uint32_t)*num_triangles*3);
+        quads = (uint32_t*) malloc(sizeof(uint32_t)*num_quads*4);
         
-        const int *face = faces;
-        int *triangle = triangles;
-        int *quad = quads;
+        const uint32_t *face = faces;
+        uint32_t *triangle = triangles;
+        uint32_t *quad = quads;
         for (int f = 0; f < nfaces; f++)
         {
             if (face[3] == 0)
@@ -460,11 +458,11 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         free(faces);
         
         npy_intp np_triangles_dims[1] = { num_triangles*3 };
-        PyArrayObject *np_triangles = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_triangles_dims, NPY_INT, triangles);
+        PyArrayObject *np_triangles = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_triangles_dims, NPY_UINT32, triangles);
         _set_base_object(np_triangles, triangles, "triangles");
         
         npy_intp np_quads_dims[1] = { num_quads*4 };
-        PyArrayObject *np_quads = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_quads_dims, NPY_INT, quads);
+        PyArrayObject *np_quads = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_quads_dims, NPY_UINT32, quads);
         _set_base_object(np_quads, quads, "quads");
         
         np_faces = Py_BuildValue("(NN)", (PyObject*)np_triangles, (PyObject*)np_quads);
@@ -506,7 +504,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
         for (int fi = 0; fi < nfaces; fi++)
         {
-            const int *face = faces + 4*fi;
+            const uint32_t *face = faces + 4*fi;
 
             for (int i = 0; i < 4; i++)
             {
