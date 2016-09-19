@@ -5,7 +5,7 @@ import bpy
 
 # For uv coordinate handling, see http://blender.stackexchange.com/questions/4820/exporting-uv-coordinates
 
-sys.path.insert(0, '.') 
+sys.path.insert(0, '.')
 try:
     from readply import readply
 except ImportError:
@@ -52,14 +52,14 @@ mesh.validate()
 mesh.update()
 
 if vcolarray is not None:
-    
-    """    
+
+    """
     # For each face, set the vertex colors of the vertices making up that face
     for fi in range(num_faces):
-        
+
         # Get vertex indices for this triangle/quad
         i, j, k, l = farray[4*fi:4*fi+4]
-        
+
         face_col = vcol_data[fi]
         face_col.color1 = vcolarray[3*i:3*i+3]
         face_col.color2 = vcolarray[3*j:3*j+3]
@@ -67,17 +67,17 @@ if vcolarray is not None:
         if l != 0:
             face_col.color4 = vcolarray[3*l:3*l+3]
     """
-    
+
     vcol_layer = mesh.vertex_colors.new()
     vcol_data = vcol_layer.data
     vcol_data.foreach_set('color', vcolarray)
 
 if vnarray is not None:
-    print('Warning: vertex normals read from .ply file, but NOT applying vertex normals to blender object (yet)!')
+    mesh.vertices.foreach_set('normal', vnarray)
 
 if vtexcoordarray is not None:
     print('Warning: vertex texcoords read from .ply file, but NOT applying vertex texture coordinates to blender object (yet)!')
-    
+
 mesh.validate()
 mesh.update()
 
