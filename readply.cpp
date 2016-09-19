@@ -1,12 +1,14 @@
 /*
 TODO:
-- need to handle faces with more than 4 vertices
+- correctly ignore polygons with n > 4
 - we assume property order in the file is always x,y,z. Need good way to handle other orders
-- add parameter to specify if returned vertex color array is
-  blender-style (color per vertex per face) or plain per-vertex
-- comment out printf()s
 - double-check that we are really ignoring faces with >4 vertices. 
   It seems indices of such a face *are* added to the index list...
+- need to handle faces with more than 4 vertices
+- add parameter to specify if returned vertex color array is
+  blender-style (color per vertex per face) or plain per-vertex
+- provide option to return 2-dim arrays, e.g. shape (V,3) vertices instead 
+  of 1-dim V*3
 */
 
 #define NPY_NO_DEPRECATED_API NPY_1_9_API_VERSION
@@ -187,6 +189,9 @@ face_cb(p_ply_argument argument)
 
         return 1;
     }
+    
+    //if (length > 4)
+        //return 1;
 
     // XXX check what happens when length > 4 here, seems we DON'T ignore those faces
     vertex_index = ply_get_argument_value(argument);
@@ -208,7 +213,7 @@ face_cb(p_ply_argument argument)
     {
         // Handle the case when there is a quad that has indices i, j, k, 0.
         // We should cycle the indices to move the 0 out of the last place,
-        // as it would otherwise get interpreted as a triangle.
+        // as this quad would otherwise get interpreted as a triangle.
         const int firstidx = next_face_element_offset-4;
         faces[firstidx+3] = faces[firstidx+2];
         faces[firstidx+2] = faces[firstidx+1];
@@ -562,9 +567,11 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 // Python module stuff
 
 static char readply_func_doc[] = 
-"readply_func_doc(plyfile, blender_face_indices=True)\n\
+"readply(plyfile, blender_face_indices=True)\n\
 \n\
-Reads a .PLY file. Returns a tuple:\n\
+Reads a .PLY file.\n\
+\n\
+Returns a tuple:\n\
 (num_vertices, num_faces, vertices, faces, vertex_normals, vertex_colors, vertex_tex_coords)\n\
 \n\
 The first two values will be integers, the remaining ones will be 1-dimensional Numpy arrays,\n\
@@ -577,9 +584,10 @@ convention of using *four indices per face*, regardless of whether the face is a
 In case of a triangle the last index will be 0.\n\
 \n\
 If blender_face_indices is False, faces will be a 2-tuple of arrays, one with\n\
-indices for triangles and one for quads.\n\
+3 indices per triangles and one with 4 indices per quad.\n\
 \n\
-Note: Faces with more than 4 vertices are currently not supported.";
+BUGS: faces with more than 4 vertices are currently not supported and are currently\n\
+      not ignored correctly.\n";
 
 static PyMethodDef ModuleMethods[] =
 {    
