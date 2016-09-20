@@ -64,6 +64,9 @@ if 'vertex_normals' in p:
 
 if 'texcoords' in p:
     
+    # XXX This way of assigning UVs is potentially pretty slow for 
+    # large numbers of vertices
+    
     texcoords = p['texcoords']
     texcoords = texcoords.reshape((texcoords.size//2, 2))
     
