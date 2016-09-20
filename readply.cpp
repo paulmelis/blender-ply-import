@@ -416,9 +416,15 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     
     PyObject    *result = PyDict_New();
     
+
+#if PY_MAJOR_VERSION == 2    
+    PyDict_SetItemString(result, "num_vertices", PyInt_FromLong(nvertices));
+    PyDict_SetItemString(result, "num_faces", PyInt_FromLong(nfaces));        
+#else
     PyDict_SetItemString(result, "num_vertices", PyLong_FromLong(nvertices));
     PyDict_SetItemString(result, "num_faces", PyLong_FromLong(nfaces));        
-
+#endif
+    
     // Vertices
     
     npy_intp np_vertices_dims[1] = { nvertices*3 };
