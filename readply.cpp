@@ -413,25 +413,32 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     //
     // Create return value objects
     //
+    
+    PyObject    *result = PyDict_New();
+    
+    PyDict_SetItemString(result, "num_vertices", PyLong_FromLong(nvertices));
+    PyDict_SetItemString(result, "num_faces", PyLong_FromLong(nfaces));        
 
     // Vertices
     
     npy_intp np_vertices_dims[1] = { nvertices*3 };
     // XXX check for NULL in return of PyArray_SimpleNewFromData()
-    PyArrayObject *np_vertices = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);    
-    _set_base_object(np_vertices, vertices, "vertices");
+    PyObject *np_vertices = PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertices);    
+    _set_base_object((PyArrayObject*)np_vertices, vertices, "vertices");
+    
+    PyDict_SetItemString(result, "vertices", (PyObject*)np_vertices);    
 
     // Faces
-    
-    PyObject *np_faces;
     
     if (blender_face_indices)
     {
         // Single array holding both triangles and quads.
         // 4 indices per face, triangles always have fourth index of 0
         npy_intp np_faces_dims[1] = { nfaces*4 };
-        np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_UINT32, faces);
+        PyObject *np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_UINT32, faces);
         _set_base_object((PyArrayObject*)np_faces, faces, "faces");
+        
+        PyDict_SetItemString(result, "faces", np_faces);
     }
     else
     {
@@ -470,32 +477,30 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         PyArrayObject *np_triangles = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_triangles_dims, NPY_UINT32, triangles);
         _set_base_object(np_triangles, triangles, "triangles");
         
+        PyDict_SetItemString(result, "triangles", (PyObject*)np_triangles);
+        
         npy_intp np_quads_dims[1] = { num_quads*4 };
         PyArrayObject *np_quads = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_quads_dims, NPY_UINT32, quads);
         _set_base_object(np_quads, quads, "quads");
         
-        np_faces = Py_BuildValue("(NN)", (PyObject*)np_triangles, (PyObject*)np_quads);
+        PyDict_SetItemString(result, "quads", (PyObject*)np_quads);
     }
 
     // Optional per-vertex arrays
-
-    PyObject *np_vcolors, *np_vnormals, *np_vtexcoords;
 
     if (have_vertex_normals)
     {
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_normals);
         _set_base_object(arr, vertex_normals, "vertex_normals");
-        np_vnormals = (PyObject*) arr;
-    }
-    else
-    {
-        // No normals
-        np_vnormals = Py_None;
-        Py_XINCREF(np_vnormals);
+        PyObject *np_vnormals = (PyObject*) arr;
+        
+        PyDict_SetItemString(result, "normals", np_vnormals);
     }
 
     if (have_vertex_colors)
     {
+        PyObject *np_vcolors;
+        
         if (blender_vertex_colors_per_face)
         {
             // Convert list of per-vertex colors 
@@ -546,13 +551,8 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
             _set_base_object(arr, vertex_colors, "vertex_colors");
             np_vcolors = (PyObject*) arr;                        
         }
-
-    }
-    else
-    {
-        // No vertex colors
-        np_vcolors = Py_None;
-        Py_XINCREF(np_vcolors);
+        
+        PyDict_SetItemString(result, "vertex_colors", np_vcolors);
     }
 
     if (have_vertex_texcoords)
@@ -561,18 +561,14 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertex_texcoords_dims, NPY_FLOAT, vertex_texcoords);
         _set_base_object(arr, vertex_texcoords, "vertex_texcoords");
-        np_vtexcoords = (PyObject*) arr;    
-    }
-    else
-    {
-        // No texture coords
-        np_vtexcoords = Py_None;
-        Py_XINCREF(np_vtexcoords);
+        PyObject *np_vtexcoords = (PyObject*) arr;    
+        
+        PyDict_SetItemString(result, "texcoords", np_vtexcoords);
     }
 
-    // Return the stuff!
-
-    return Py_BuildValue("(iiNNNNN)",  nvertices, nfaces, np_vertices, np_faces, np_vnormals, np_vcolors, np_vtexcoords);
+    // Return the stuff! 
+    
+    return result;
 }
 
 // Python module stuff
@@ -580,30 +576,31 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 static char readply_func_doc[] = 
 "readply(plyfile, blender_face_indices=True, blender_vertex_colors_per_face=True)\n\
 \n\
-Reads a .PLY file.\n\
+Reads a 3D model from a .PLY file.\n\
 \n\
-Returns a tuple:\n\
-(num_vertices, num_faces, vertices, faces, vertex_normals, vertex_colors, vertex_tex_coords)\n\
+Returns a dictionary.\n\
 \n\
-The first two values will be integers, the remaining ones will be 1-dimensional Numpy arrays,\n\
-except faces, which may also be a tuple of two 1-dimensional Numpy arrays.\n\
-Any of vertex_normals, vertex_colors and vertex_tex_coords will be None if the respective\n\
-model element was not present in the PLY file.\n\
+The result will always contain keys \"num_vertices\" and \"num_faces\" holding\n\
+integers. The values for other keys will be 1-dimensional Numpy arrays.\n\
 \n\
-If blender_face_indices is True (the default), the faces array uses the Blender vertices_raw\n\
-convention of using *four indices per face*, regardless of whether the face is a triangle or quad.\n\
-In case of a triangle the last index will be 0.\n\
+Key \"vertices\" will contain vertex positions. Keys \"normals\",\"texcoords\"\n\
+and \"vertex_colors\" are only present if their respective model element is present\n\
+in the PLY file being read.\n\
 \n\
-If blender_face_indices is False, faces will be a 2-tuple of arrays, one with\n\
-3 indices per triangles and one with 4 indices per quad.\n\
+If blender_face_indices is True (the default), there will be a key \"faces\" that holds\n\
+an array following the Blender vertices_raw convention of using *four indices per face*,\n\
+regardless of whether the face is a triangle or quad. Triangles can be recognized by their\n\
+last index having a value of 0.\n\
 \n\
-If blender_vertex_colors_per_face is True (the default), the vertex_colors array has for\n\
-each face a per-vertex color value. If the variable is false a single color per vertex\n\
-is returned.\n\
+If blender_face_indices is False, there will be keys \"triangles\" and \"quads\", holding\n\
+3 indices per triangle and 4 indices per quad, respectively.\n\
+\n\
+If blender_vertex_colors_per_face is True (the default), the \"vertex_colors\" key holds\n\
+a per-vertex color value for each face (provided vertex-colors are present in the PLY file).\n\
+If the variable is False a single color per vertex is returned.\n\
 \n\
 BUGS:\n\
-- Faces with more than 4 vertices are currently not supported and are currently\n\
-  not ignored correctly.\n\
+- Faces with more than 4 vertices are currently not supported and are not ignored correctly.\n\
 - The vertex-colors per face return values (blender_vertex_colors_per_face=True)\n\
   are incorrect when blender_face_indices=False.\n\
 ";

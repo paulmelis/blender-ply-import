@@ -33,7 +33,9 @@ if len(args) > 0:
 
 t0 = time.time()
 
-num_vertices, num_faces, varray, farray, vnarray, vcolarray, vtexcoordarray = readply(fname)
+p = readply(fname)
+
+print(p.keys())
 
 t1 = time.time()
 print('PLY file read by readply() in %.3fs' % (t1-t0))
@@ -42,17 +44,17 @@ print('PLY file read by readply() in %.3fs' % (t1-t0))
 
 mesh = bpy.data.meshes.new(name='imported mesh')
 
-mesh.vertices.add(num_vertices)
-mesh.vertices.foreach_set('co', varray)
+mesh.vertices.add(p['num_vertices'])
+mesh.vertices.foreach_set('co', p['vertices'])
 
-mesh.tessfaces.add(num_faces)
-mesh.tessfaces.foreach_set('vertices_raw', farray)
+mesh.tessfaces.add(p['num_faces'])
+mesh.tessfaces.foreach_set('vertices_raw', p['faces'])
 
 mesh.validate()
 mesh.update()
 
-if vcolarray is not None:
-
+if 'vertex_colors' in p:
+    
     """
     # For each face, set the vertex colors of the vertices making up that face
     for fi in range(num_faces):
@@ -70,12 +72,12 @@ if vcolarray is not None:
 
     vcol_layer = mesh.vertex_colors.new()
     vcol_data = vcol_layer.data
-    vcol_data.foreach_set('color', vcolarray)
+    vcol_data.foreach_set('color', p['vertex_colors'])
 
-if vnarray is not None:
-    mesh.vertices.foreach_set('normal', vnarray)
+if 'vertex_normals' in p:
+    mesh.vertices.foreach_set('normal', p['vertex_normals'])
 
-if vtexcoordarray is not None:
+if 'texcoords' in p:
     print('Warning: vertex texcoords read from .ply file, but NOT applying vertex texture coordinates to blender object (yet)!')
 
 mesh.validate()
@@ -91,7 +93,6 @@ obj.select = True
 t2 = time.time()
 print('Blender object+mesh created in %.3fs' % (t2-t1))
 
-del varray
-del farray
+del p
 
 print('Total import time %.3fs' % (t2-t0))
