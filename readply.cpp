@@ -231,10 +231,11 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 {
     char    *fname;
     int     blender_face_indices = 1;
+    int     blender_vertex_colors_per_face = 1;
     
-    static char *kwlist[] = {"plyfile", "blender_face_indices", NULL};
+    static char *kwlist[] = {"plyfile", "blender_face_indices", "blender_vertex_colors_per_face", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|i", kwlist, &fname, &blender_face_indices))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|ii", kwlist, &fname, &blender_face_indices, &blender_vertex_colors_per_face))
         return NULL;
     
     // Open PLY file
@@ -273,6 +274,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         element = ply_get_next_element(ply, element);
     }
 
+    // XXX turn into actual checks
     assert(vertex_element && "Don't have a vertex element");
     assert(face_element && "Don't have a face element");
 
@@ -296,6 +298,8 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
     p_ply_property  prop;
     e_ply_type      ptype, plength_type, pvalue_type;
+    
+    // XXX check ply_set_read_cb() return values below
 
     prop = ply_get_next_property(vertex_element, NULL);
     while (prop)
@@ -431,7 +435,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     }
     else
     {
-        // Separate arrays of vertices and triangles
+        // Separate arrays of triangles and quads
         
         triangles = (uint32_t*) malloc(sizeof(uint32_t)*num_triangles*3);
         quads = (uint32_t*) malloc(sizeof(uint32_t)*num_quads*4);
@@ -492,50 +496,57 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
     if (have_vertex_colors)
     {
-        /* Direct return of per-vertex colors
-        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_colors);
-        */
-
-        // Colors per vertex
-        // ->
-        // Colors per vertex per face
-
-        const int n = 3*((num_triangles*3)+(num_quads*4));
-
-        float   *vcol2 = (float*) malloc (n*sizeof(float));
-        float   *vcol2color = vcol2;
-        float   *col;
-        int     vi;
-
-        for (int fi = 0; fi < nfaces; fi++)
+        if (blender_vertex_colors_per_face)
         {
-            const uint32_t *face = faces + 4*fi;
+            // Convert list of per-vertex colors 
+            // to per-vertex colors per face
 
-            for (int i = 0; i < 4; i++)
+            const int n = 3*((num_triangles*3)+(num_quads*4));
+
+            float   *vcol2 = (float*) malloc (n*sizeof(float));
+            float   *vcol2color = vcol2;
+            float   *col;
+            int     vi;
+
+            // XXX only works for the blender 4-indices per face mode! not for the separate triangle and quad mode!
+            for (int fi = 0; fi < nfaces; fi++)
             {
-                vi = face[i];
+                const uint32_t *face = faces + 4*fi;
 
-                if (i == 3 && vi == 0)
+                for (int i = 0; i < 4; i++)
                 {
-                    // Triangle
-                    break;
+                    vi = face[i];
+
+                    if (i == 3 && vi == 0)
+                    {
+                        // Triangle
+                        break;
+                    }
+
+                    col = vertex_colors + 3*vi;
+
+                    vcol2color[0] = col[0];
+                    vcol2color[1] = col[1];
+                    vcol2color[2] = col[2];
+                    vcol2color += 3;
                 }
-
-                col = vertex_colors + 3*vi;
-
-                vcol2color[0] = col[0];
-                vcol2color[1] = col[1];
-                vcol2color[2] = col[2];
-                vcol2color += 3;
             }
+
+            free(vertex_colors);
+            
+            npy_intp    dims[1] = { n };
+            PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, vcol2);        
+            _set_base_object(arr, vcol2, "vertex_colors");
+            np_vcolors = (PyObject*) arr;            
+        }
+        else
+        {
+            // Per-vertex colors
+            PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_colors);
+            _set_base_object(arr, vertex_colors, "vertex_colors");
+            np_vcolors = (PyObject*) arr;                        
         }
 
-        free(vertex_colors);
-
-        npy_intp    dims[1] = { n };
-        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, vcol2);        
-        _set_base_object(arr, vcol2, "vertex_colors");
-        np_vcolors = (PyObject*) arr;
     }
     else
     {
@@ -550,7 +561,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertex_texcoords_dims, NPY_FLOAT, vertex_texcoords);
         _set_base_object(arr, vertex_texcoords, "vertex_texcoords");
-        np_vtexcoords = (PyObject*) arr;
+        np_vtexcoords = (PyObject*) arr;    
     }
     else
     {
@@ -567,7 +578,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 // Python module stuff
 
 static char readply_func_doc[] = 
-"readply(plyfile, blender_face_indices=True)\n\
+"readply(plyfile, blender_face_indices=True, blender_vertex_colors_per_face=True)\n\
 \n\
 Reads a .PLY file.\n\
 \n\
@@ -586,8 +597,16 @@ In case of a triangle the last index will be 0.\n\
 If blender_face_indices is False, faces will be a 2-tuple of arrays, one with\n\
 3 indices per triangles and one with 4 indices per quad.\n\
 \n\
-BUGS: faces with more than 4 vertices are currently not supported and are currently\n\
-      not ignored correctly.\n";
+If blender_vertex_colors_per_face is True (the default), the vertex_colors array has for\n\
+each face a per-vertex color value. If the variable is false a single color per vertex\n\
+is returned.\n\
+\n\
+BUGS:\n\
+- Faces with more than 4 vertices are currently not supported and are currently\n\
+  not ignored correctly.\n\
+- The vertex-colors per face return values (blender_vertex_colors_per_face=True)\n\
+  are incorrect when blender_face_indices=False.\n\
+";
 
 static PyMethodDef ModuleMethods[] =
 {    
