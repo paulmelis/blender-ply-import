@@ -1,5 +1,8 @@
 #!/usr/bin/env python2
 # blender -P mesh_readply.py -- file.ply
+#
+# See https://www.blender.org/api/blender_python_api_2_67_release/info_gotcha.html#ngons-and-tessellation-faces
+#
 import sys, os, array, time, gc
 import bpy, bmesh
 
