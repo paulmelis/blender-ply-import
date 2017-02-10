@@ -598,7 +598,7 @@ Returns a dictionary.\n\
 The result will always contain keys \"num_vertices\" and \"num_faces\" holding\n\
 integers. The values for other keys will be 1-dimensional Numpy arrays.\n\
 \n\
-Key \"vertices\" will contain vertex positions. Keys \"normals\",\"texcoords\"\n\
+Key \"vertices\" will contain vertex positions. Keys \"normals\", \"texcoords\"\n\
 and \"vertex_colors\" are only present if their respective model element is present\n\
 in the PLY file being read.\n\
 \n\
@@ -611,7 +611,7 @@ If blender_face_indices is False, there will be keys \"triangles\" and \"quads\"
 3 indices per triangle and 4 indices per quad, respectively.\n\
 \n\
 If blender_vertex_colors_per_face is True (the default), the \"vertex_colors\" key holds\n\
-a per-vertex color value for each face (provided vertex-colors are present in the PLY file).\n\
+a per-vertex color value for each face (provided vertex colors are present in the PLY file).\n\
 If the variable is False a single color per vertex is returned.\n\
 \n\
 BUGS:\n\
