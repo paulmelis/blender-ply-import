@@ -28,10 +28,10 @@ Python data structures are built up holding all geometry, vertex colors,
 etc. This simply takes quite a lot of time (and memory).
 
 Fortunately, in foreach_getset() in source/blender/python/intern/bpy_rna.c 
-if the passed object may support the buffer protocol.
+the passed object may support the buffer protocol.
 We can use this functionality to pass chunks of memory containing
 vertex and face data, without having to build up Python data
-structures. We use NumPy arrays in the read_ply extension module 
+structures. We use NumPy arrays in the readply extension module 
 to easily pass the data directly to Blender. 
 
 Note: the readply module is not tied to Blender in any way and can 
@@ -46,7 +46,7 @@ The Stanford 3D Scanning Repository ([2]). This 3D model consists of
 
 With Blender 2.76 and xyzrgb_dragon.ply already in the filesystem cache:
 
-# Native blender PLY importer
+# Native blender PLY importer (bpy.ops.import_mesh.ply())
 $ blender -P test/blender_native_import.py -- xyzrgb_dragon.ply
 total                           81.474s
 
@@ -78,13 +78,13 @@ Notes
 - The extension module can be compiled for both Python 2.x and 3.x,
   even though Blender always uses Python 3.x (at least, modern versions
   of Blender do ;-)).
+- Texture coordinates may be stored in s+t or u+v vertex fields 
 
 Bugs
 ----
 
-- Normals in the PLY are read but nnot passed to Blender yet
-- Texture coordinates are not read from the PLY file
-- Polygons with more than 4 vertices are ignored
+- Polygons with more than 4 vertices are not currently supported and 
+  will screw up the resulting 3D model
 - It is assumed that the PLY file has vertex coordinates defined
   in x, y and z order (the PLY header allows properties in any order).
   
