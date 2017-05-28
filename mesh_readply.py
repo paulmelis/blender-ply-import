@@ -1,9 +1,14 @@
 #!/usr/bin/env python2
 # blender -P mesh_readply.py -- file.ply
+#
+# See https://www.blender.org/api/blender_python_api_2_67_release/info_gotcha.html#ngons-and-tessellation-faces
+#
 import sys, os, array, time, gc
-import bpy
+import bpy, bmesh
 
-sys.path.insert(0, '.') 
+# For uv coordinate handling, see http://blender.stackexchange.com/questions/4820/exporting-uv-coordinates
+
+sys.path.insert(0, '.')
 try:
     from readply import readply
 except ImportError:
@@ -31,7 +36,7 @@ if len(args) > 0:
 
 t0 = time.time()
 
-num_vertices, num_faces, varray, farray, vnarray, vcolarray = readply(fname)
+p = readply(fname)
 
 t1 = time.time()
 print('PLY file read by readply() in %.3fs' % (t1-t0))
@@ -40,41 +45,50 @@ print('PLY file read by readply() in %.3fs' % (t1-t0))
 
 mesh = bpy.data.meshes.new(name='imported mesh')
 
-mesh.vertices.add(num_vertices)
-mesh.vertices.foreach_set('co', varray)
+mesh.vertices.add(p['num_vertices'])
+mesh.vertices.foreach_set('co', p['vertices'])
 
-mesh.tessfaces.add(num_faces)
-mesh.tessfaces.foreach_set('vertices_raw', farray)
+mesh.tessfaces.add(p['num_faces'])
+mesh.tessfaces.foreach_set('vertices_raw', p['faces'])
 
 mesh.validate()
 mesh.update()
 
-if vcolarray is not None:
-    
-    """    
-    # For each face, set the vertex colors of the vertices making up that face
-    for fi in range(num_faces):
-        
-        # Get vertex indices for this triangle/quad
-        i, j, k, l = farray[4*fi:4*fi+4]
-        
-        face_col = vcol_data[fi]
-        face_col.color1 = vcolarray[3*i:3*i+3]
-        face_col.color2 = vcolarray[3*j:3*j+3]
-        face_col.color3 = vcolarray[3*k:3*k+3]
-        if l != 0:
-            face_col.color4 = vcolarray[3*l:3*l+3]
-    """
-    
+if 'vertex_colors' in p:   
     vcol_layer = mesh.vertex_colors.new()
     vcol_data = vcol_layer.data
-    vcol_data.foreach_set('color', vcolarray)
-
-if vnarray is not None:
-    print('Warning: vertex normals read from .ply file, but NOT applying vertex normals to blender object (yet)!')
+    vcol_data.foreach_set('color', p['vertex_colors'])
     
 mesh.validate()
-mesh.update()
+mesh.update()   
+
+if 'vertex_normals' in p:    
+    mesh.vertices.foreach_set('normal', p['vertex_normals'])
+
+if 'texcoords' in p:
+    
+    # XXX This way of assigning UVs is potentially pretty slow for 
+    # large numbers of vertices
+    
+    texcoords = p['texcoords']
+    texcoords = texcoords.reshape((texcoords.size//2, 2))
+    
+    mesh.uv_textures.new('default')
+    
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    
+    uv_layer = bm.loops.layers.uv[0]
+    
+    for fi, f in enumerate(bm.faces):
+        for l in f.loops:
+            vi = l.vert.index
+            l[uv_layer].uv = tuple(texcoords[vi])
+    
+    bm.to_mesh(mesh)
+
+mesh.validate()
+mesh.update()   
 
 obj = bpy.data.objects.new('imported object', mesh)
 
@@ -86,7 +100,6 @@ obj.select = True
 t2 = time.time()
 print('Blender object+mesh created in %.3fs' % (t2-t1))
 
-del varray
-del farray
+del p
 
 print('Total import time %.3fs' % (t2-t0))

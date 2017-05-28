@@ -52,6 +52,7 @@ from readply import readply
 
 def load_ply_mesh(filepath, ply_name):    
     
+    # XXX call needs update for new API!
     num_vertices, num_faces, varray, farray, vnarray, vcolarray = readply(filepath)
 
     # Create a mesh + object using the binary vertex and face data
