@@ -1,9 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # blender -P mesh_readply.py -- file.ply
 #
 # See https://www.blender.org/api/blender_python_api_2_67_release/info_gotcha.html#ngons-and-tessellation-faces
 #
-import sys, os, array, time, gc
+import sys, os, time
 import bpy, bmesh
 
 # For uv coordinate handling, see http://blender.stackexchange.com/questions/4820/exporting-uv-coordinates
@@ -12,7 +12,7 @@ sys.path.insert(0, '.')
 try:
     from readply import readply
 except ImportError:
-    scriptdir = os.path.split(os.path.abspath(__file__))[0]
+    scriptdir = os.path.split(os.path.abspath(__file__))[0]    
     sys.path.insert(0, scriptdir)
     from readply import readply
 

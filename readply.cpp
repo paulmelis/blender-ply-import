@@ -367,6 +367,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     vertices = (float*) malloc(sizeof(float)*nvertices*3);
     next_vertex_element_offset = 0;
 
+    // We assume triangles (with last index 0) or quads, hence 4 indices per face
     faces = (uint32_t*) malloc(sizeof(uint32_t)*nfaces*4);
     next_face_element_offset = 0;
 
@@ -388,7 +389,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         next_vertex_texcoord_element_offset = 0;
     }
 
-    // Let rply process the file using the callbacks we set
+    // Let rply process the file using the callbacks we set above
 
     num_triangles = num_quads = 0;
 
@@ -420,7 +421,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     ply_close(ply);
 
     //
-    // Create return value objects
+    // Create return value
     //
     
     PyObject    *result = PyDict_New();
