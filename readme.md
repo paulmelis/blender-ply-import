@@ -5,15 +5,15 @@
 Paul Melis <paul.melis@surfsara.nl>
 SURFsara Visualization group
 
-The files under the rply/ directory are a copy of the RPly 1.1.4 
+The files under the `rply/` directory are a copy of the RPly 1.1.4 
 source distribution (see http://w3.impa.br/~diego/software/rply/).
 
 ## License
 
-See the LICENSE file in the root directory of this distribution,
-which applies to all files except the ones in the rply/ directory.
+See the `LICENSE` file in the root directory of this distribution,
+which applies to all files except the ones in the `rply/` directory.
 
-See rply/LICENSE for the the license of the RPly sources.
+See `rply/LICENSE` for the the license of the RPly sources.
 
 ## Rationale
 
@@ -22,7 +22,7 @@ script in Blender for that matter). This is because during import
 Python data structures are built up holding all geometry, vertex colors, 
 etc. This simply takes quite a lot of time (and memory).
 
-Fortunately, in foreach_getset() in source/blender/python/intern/bpy_rna.c 
+Fortunately, in `foreach_getset()` in `source/blender/python/intern/bpy_rna.c` 
 the passed object may support the buffer protocol.
 We can use this functionality to pass chunks of memory containing
 vertex and face data, without having to build up Python data
@@ -64,8 +64,8 @@ Native blender PLY importer: 4.164 GB (RSS) | 5.036 GB (VSIZE)
 Using readply module:        1.833 GB (RSS) | 3.227 GB (VSIZE)
 ```
 
-[1] http://graphics.stanford.edu/data/3Dscanrep/xyzrgb/xyzrgb_dragon.ply.gz
-[2] http://graphics.stanford.edu/data/3Dscanrep/
+1. http://graphics.stanford.edu/data/3Dscanrep/xyzrgb/xyzrgb_dragon.ply.gz
+2. http://graphics.stanford.edu/data/3Dscanrep/
 
 ## Notes
 
