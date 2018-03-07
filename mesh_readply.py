@@ -18,7 +18,7 @@ except ImportError:
 
 args = []
 idx = sys.argv.index('--')
-if idx != 1:
+if idx != -1:
     args = sys.argv[idx+1:]
 
 # In foreach_getset() in source/blender/python/intern/bpy_rna.c the
