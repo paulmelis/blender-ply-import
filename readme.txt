@@ -8,14 +8,13 @@ Paul Melis <paul.melis@surfsara.nl>
 SURFsara Visualization group
 
 The files under the rply/ directory are a copy of the RPly 1.1.4 
-source distribution (see http://w3.impa.br/~diego/software/rply/)
+source distribution (see http://w3.impa.br/~diego/software/rply/).
 
 License
 ---------
 
-All files, except the ones in the rply/ directory:
-
-XXX
+See the LICENSE file in the root directory of this distribution,
+which applies to all files except the ones in the rply/ directory.
 
 See rply/LICENSE for the the license of the RPly sources.
 
