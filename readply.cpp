@@ -592,7 +592,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 static char readply_func_doc[] = 
 "readply(plyfile, blender_face_indices=True, blender_vertex_colors_per_face=True)\n\
 \n\
-Reads a 3D model from a .PLY file.\n\
+Reads a 3D model from a PLY file.\n\
 \n\
 Returns a dictionary.\n\
 \n\
@@ -612,7 +612,7 @@ If blender_face_indices is False, there will be keys \"triangles\" and \"quads\"
 3 indices per triangle and 4 indices per quad, respectively.\n\
 \n\
 If blender_vertex_colors_per_face is True (the default), the \"vertex_colors\" key holds\n\
-a per-vertex color value for each face (provided vertex colors are present in the PLY file).\n\
+a per-vertex color value for each face (provided that vertex colors are present in the PLY file).\n\
 If the variable is False a single color per vertex is returned.\n\
 \n\
 BUGS:\n\
