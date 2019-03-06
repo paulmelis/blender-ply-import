@@ -522,7 +522,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
             // Convert list of per-vertex colors 
             // to per-vertex colors per face
 
-            const int n = 3*((num_triangles*3)+(num_quads*4));
+            const int n = 4*((num_triangles*3)+(num_quads*4));
 
             float   *vcol2 = (float*) malloc (n*sizeof(float));
             float   *vcol2color = vcol2;
@@ -549,7 +549,8 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
                     vcol2color[0] = col[0];
                     vcol2color[1] = col[1];
                     vcol2color[2] = col[2];
-                    vcol2color += 3;
+                    vcol2color[3] = 1.0f;
+                    vcol2color += 4;
                 }
             }
 
