@@ -81,6 +81,14 @@ of the Python module:
 
 These simply call `setup.py` with a few options to do the in-place building.
 
+For use with Blender use the `setup.py` script as
+
+```
+$ blender -b -P setup.py
+```
+
+This should use Blender's specific version of Python to build the module.
+
 ## Notes
 
 - Make sure that the version of NumPy used for compiling the readply
