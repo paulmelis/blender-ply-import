@@ -33,8 +33,8 @@ vertex and face data, without having to build up Python data
 structures. We use NumPy arrays in the readply extension module 
 to easily pass the data directly to Blender. 
 
-Note: the readply module is not tied to Blender in any way and can 
-be used as a general PLY reader for Python.
+The readply module is not tied to Blender in any way and can 
+be used as a general PLY reader in Python.
 
 ## Performance
 
@@ -83,17 +83,18 @@ These simply call `setup.py` with a few options to do the in-place building.
 
 ## Notes
 
-- Make sure that the version of numpy used for compiling the readply
-  extension has the same API version as the one used in Blender.
-- The extension module can be compiled for both Python 2.x and 3.x,
-  even though Blender always uses Python 3.x (at least, modern versions
-  of Blender do ;-)).
-- Texture coordinates may be stored in s+t or u+v vertex fields 
+- Make sure that the version of NumPy used for compiling the readply
+  extension has the same API version as the one that is used by Blender
+  (the official binary distributions of Blender include a version of NumPy)
+- The `readply` extension module can be compiled for both Python 2.x and 3.x,
+  even though Blender uses Python 3.x
+- Texture coordinates may be stored in s+t or u+v vertex fields, depending
+  on what property names the PLY file being read uses
 
 ## Bugs
 
 - Polygons with more than 4 vertices are not currently supported and 
   will screw up the resulting 3D model
-- It is assumed that the PLY file has vertex coordinates defined
-  in x, y and z order (the PLY header allows properties in any order).
+- It is assumed that if the PLY file includes vertex coordinates they 
+  are defined in x, y and z order (the PLY header allows properties in any order).
   
