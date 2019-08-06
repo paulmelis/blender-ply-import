@@ -68,6 +68,16 @@ Using readply module:        1.833 GB (RSS) | 3.227 GB (VSIZE)
 1. http://graphics.stanford.edu/data/3Dscanrep/xyzrgb/xyzrgb_dragon.ply.gz
 2. http://graphics.stanford.edu/data/3Dscanrep/
 
+## Building
+
+Two small shell scripts are provided to easily build an in-place version
+of the Python module:
+
+- `make2.sh` for Python 2.x
+- `make3.sh` for Python 3.x
+
+These simply call `setup.py` with a few options to do the in-place building.
+
 ## Notes
 
 - Make sure that the version of numpy used for compiling the readply
