@@ -98,3 +98,11 @@ These simply call `setup.py` with a few options to do the in-place building.
 - It is assumed that if the PLY file includes vertex coordinates they 
   are defined in x, y and z order (the PLY header allows properties in any order).
   
+  
+Readply API
+-----------
+
+numpy arrays returned are all 1-dimensional. i.e. vertex coordinates
+are NOT returned as an Nx3 array but as length 3*N.
+
+farray: 4 indices per triangle/quad. triangles will have last index set to 0
