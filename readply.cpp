@@ -125,33 +125,33 @@ _set_base_object(PyArrayObject *arrobj, void *memory, const char *name)
 //
 
 static float    *vertices = NULL;
-static int      next_vertex_element_offset;
+static int      next_vertex_element_index;
 
 static uint32_t *faces = NULL;          // XXX vertex_indices
 static uint32_t *loop_start = NULL;
-static uint32_t *loop_total = NULL;
+static uint32_t *loop_total = NULL;     // XXX rename loop_length
 static int      face_indices_size;
 static int      next_face_offset;
-static int      next_face_element_offset;
+static int      next_face_element_index;
 static int      num_triangles, num_quads;
 
 static float    *vertex_normals = NULL;
-static int      next_vertex_normal_element_offset;
+static int      next_vertex_normal_element_index;
 
 static float    *vertex_colors = NULL;
-static int      next_vertex_color_element_offset;
+static int      next_vertex_color_element_index;
 static float    vertex_color_scale_factor;
 
 static float    *vertex_texcoords = NULL;
-static int      next_vertex_texcoord_element_offset;
+static int      next_vertex_texcoord_element_index;
 
 // Vertex callbacks
 
 static int
 vertex_cb(p_ply_argument argument)
 {
-    vertices[next_vertex_element_offset] = ply_get_argument_value(argument);
-    next_vertex_element_offset++;
+    vertices[next_vertex_element_index] = ply_get_argument_value(argument);
+    next_vertex_element_index++;
 
     return 1;
 }
@@ -159,8 +159,8 @@ vertex_cb(p_ply_argument argument)
 static int
 vertex_color_cb(p_ply_argument argument)
 {
-    vertex_colors[next_vertex_color_element_offset] = ply_get_argument_value(argument) * vertex_color_scale_factor;
-    next_vertex_color_element_offset++;
+    vertex_colors[next_vertex_color_element_index] = ply_get_argument_value(argument) * vertex_color_scale_factor;
+    next_vertex_color_element_index++;
 
     return 1;
 }
@@ -168,8 +168,8 @@ vertex_color_cb(p_ply_argument argument)
 static int
 vertex_normal_cb(p_ply_argument argument)
 {
-    vertex_normals[next_vertex_normal_element_offset] = ply_get_argument_value(argument);
-    next_vertex_normal_element_offset++;
+    vertex_normals[next_vertex_normal_element_index] = ply_get_argument_value(argument);
+    next_vertex_normal_element_index++;
 
     return 1;
 }
@@ -177,8 +177,8 @@ vertex_normal_cb(p_ply_argument argument)
 static int
 vertex_texcoord_cb(p_ply_argument argument)
 {
-    vertex_texcoords[next_vertex_texcoord_element_offset] = ply_get_argument_value(argument);
-    next_vertex_texcoord_element_offset++;
+    vertex_texcoords[next_vertex_texcoord_element_index] = ply_get_argument_value(argument);
+    next_vertex_texcoord_element_index++;
 
     return 1;
 }
@@ -197,14 +197,14 @@ face_cb(p_ply_argument argument)
     {
         // First value of a list property, the one that gives the 
         // number of entries, i.e. start of new face
-        loop_start[next_face_offset] = next_face_element_offset;
+        loop_start[next_face_offset] = next_face_element_index;
         loop_total[next_face_offset] = length;
         next_face_offset++;
         
         return 1;
     }
     
-    if (next_face_element_offset == face_indices_size)
+    if (next_face_element_index == face_indices_size)
     {
         face_indices_size = int(face_indices_size * 1.1);
         faces = (uint32_t*) realloc(faces, face_indices_size*sizeof(uint32_t));
@@ -212,7 +212,7 @@ face_cb(p_ply_argument argument)
     }
     
     vertex_index = ply_get_argument_value(argument);
-    faces[next_face_element_offset++] = vertex_index;
+    faces[next_face_element_index++] = vertex_index;
 
     return 1;
 }
@@ -223,12 +223,11 @@ static PyObject*
 readply(PyObject* self, PyObject* args, PyObject *kwds)
 {
     char    *fname;
-    int     blender_face_indices = 1;
-    int     blender_vertex_colors_per_face = 1;
+    int     vertex_values_per_loop = 1;
     
-    static char *kwlist[] = {"plyfile", "blender_face_indices", "blender_vertex_colors_per_face", NULL};
+    static char *kwlist[] = {"plyfile", "vertex_values_per_loop", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|ii", kwlist, &fname, &blender_face_indices, &blender_vertex_colors_per_face))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|i", kwlist, &fname, &vertex_values_per_loop))
         return NULL;
     
     // Open PLY file
@@ -350,7 +349,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     // Allocate memory and initialize some values
 
     vertices = (float*) malloc(sizeof(float)*nvertices*3);
-    next_vertex_element_offset = 0;
+    next_vertex_element_index = 0;
 
     // As we don't know the number of indices in advance we assume
     // quads. For a pure-triangle mesh this will overallocate by 1/4th,
@@ -358,7 +357,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     // later on.
     
     next_face_offset = 0;
-    next_face_element_offset = 0;
+    next_face_element_index = 0;
     
     face_indices_size = nfaces*4;
     faces = (uint32_t*) malloc(sizeof(uint32_t)*face_indices_size);
@@ -369,19 +368,19 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     if (have_vertex_normals)
     {
         vertex_normals = (float*) malloc(sizeof(float)*nvertices*3);
-        next_vertex_normal_element_offset = 0;
+        next_vertex_normal_element_index = 0;
     }
 
     if (have_vertex_colors)
     {
         vertex_colors = (float*) malloc(sizeof(float)*nvertices*3);
-        next_vertex_color_element_offset = 0;
+        next_vertex_color_element_index = 0;
     }
 
     if (have_vertex_texcoords)
     {
         vertex_texcoords = (float*) malloc(sizeof(float)*nvertices*2);
-        next_vertex_texcoord_element_offset = 0;
+        next_vertex_texcoord_element_index = 0;
     }
 
     // Let rply process the file using the callbacks we set above
@@ -442,7 +441,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     // Faces
     
     // Vertex indices
-    npy_intp np_faces_dims[1] = { next_face_element_offset };
+    npy_intp np_faces_dims[1] = { next_face_element_index };
     PyObject *np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_UINT32, faces);
     _set_base_object((PyArrayObject*)np_faces, faces, "faces");
     PyDict_SetItemString(result, "faces", np_faces);
@@ -456,7 +455,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     // Loop lengths
     PyObject *np_loop_total = PyArray_SimpleNewFromData(1, np_loop_dims, NPY_UINT32, loop_total);
     _set_base_object((PyArrayObject*)np_loop_total, loop_total, "loop_total");    
-    PyDict_SetItemString(result, "loop_total", np_loop_total);    
+    PyDict_SetItemString(result, "loop_length", np_loop_total);    
 
     // Optional per-vertex arrays
 
@@ -472,43 +471,30 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     if (have_vertex_colors)
     {
         PyObject *np_vcolors;
-        
-        /*
-        if (blender_vertex_colors_per_face)
+                
+        if (vertex_values_per_loop)
         {
-            // Convert list of per-vertex colors 
-            // to per-vertex colors per face
+            // Convert list of per-vertex RGB colors to Blender-style 
+            // per-vertex RGBA colors per face 
 
-            const int n = 4*((num_triangles*3)+(num_quads*4));
+            const int n = 4*next_face_element_index;
 
             float   *vcol2 = (float*) malloc (n*sizeof(float));
             float   *vcol2color = vcol2;
             float   *col;
             int     vi;
-
-            // XXX only works for the blender 4-indices per face mode! not for the separate triangle and quad mode!
-            for (int fi = 0; fi < nfaces; fi++)
+            
+            for (int fi = 0; fi < next_face_element_index; fi++)
             {
-                const uint32_t *face = faces + 4*fi;
+                vi = faces[fi];
 
-                for (int i = 0; i < 4; i++)
-                {
-                    vi = face[i];
+                col = vertex_colors + 3*vi;
 
-                    if (i == 3 && vi == 0)
-                    {
-                        // Triangle
-                        break;
-                    }
-
-                    col = vertex_colors + 3*vi;
-
-                    vcol2color[0] = col[0];
-                    vcol2color[1] = col[1];
-                    vcol2color[2] = col[2];
-                    vcol2color[3] = 1.0f;
-                    vcol2color += 4;
-                }
+                vcol2color[0] = col[0];
+                vcol2color[1] = col[1];
+                vcol2color[2] = col[2];
+                vcol2color[3] = 1.0f;
+                vcol2color += 4;
             }
 
             free(vertex_colors);
@@ -519,9 +505,8 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
             np_vcolors = (PyObject*) arr;            
         }
         else
-        */
         {
-            // Per-vertex colors
+            // Per-vertex RGB colors
             PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_colors);
             _set_base_object(arr, vertex_colors, "vertex_colors");
             np_vcolors = (PyObject*) arr;                        
@@ -537,8 +522,8 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertex_texcoords_dims, NPY_FLOAT, vertex_texcoords);
         _set_base_object(arr, vertex_texcoords, "vertex_texcoords");
         PyObject *np_vtexcoords = (PyObject*) arr;    
-        
-        PyDict_SetItemString(result, "texcoords", np_vtexcoords);
+                
+        PyDict_SetItemString(result, "texture_coordinates", np_vtexcoords);
     }
 
     // Return the stuff! 
@@ -549,35 +534,30 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 // Python module stuff
 
 static char readply_func_doc[] = 
-"readply(plyfile, blender_face_indices=True, blender_vertex_colors_per_face=True)\n\
+"readply(plyfile, vertex_values_per_loop=True)\n\
 \n\
 Reads a 3D model from a PLY file.\n\
 \n\
 Returns a dictionary.\n\
 \n\
-The result will always contain keys \"num_vertices\" and \"num_faces\" holding\n\
-integers. The values for other keys will be 1-dimensional Numpy arrays.\n\
+The resulting dictionary will always contain keys \"num_vertices\" and \"num_faces\"\n\
+holding integers. The values for other keys will be 1-dimensional Numpy arrays.\n\
 \n\
-Key \"vertices\" will contain vertex positions. Keys \"normals\", \"texcoords\"\n\
+Key \"vertices\" will contain vertex positions. Keys \"normals\", \"texture_coordinates\"\n\
 and \"vertex_colors\" are only present if their respective model element is present\n\
 in the PLY file being read.\n\
 \n\
-If blender_face_indices is True (the default), there will be a key \"faces\" that holds\n\
-an array following the Blender vertices_raw convention of using *four indices per face*,\n\
-regardless of whether the face is a triangle or quad. Triangles can be recognized by their\n\
-last index having a value of 0.\n\
+There will be three keys that describe faces:\n\
 \n\
-If blender_face_indices is False, there will be keys \"triangles\" and \"quads\", holding\n\
-3 indices per triangle and 4 indices per quad, respectively.\n\
+- \"faces\": vertex indices per face in a sequential list (i.e. one polygon's\n\
+             indices directly follow the next)\n\
+- \"loop_start\": the starting index of each face in the \"faces\" array\n\
+- \"loop_length\": the length of each face in number of vertex indices\n\
 \n\
-If blender_vertex_colors_per_face is True (the default), the \"vertex_colors\" key holds\n\
-a per-vertex color value for each face (provided that vertex colors are present in the PLY file).\n\
-If the variable is False a single color per vertex is returned.\n\
-\n\
-BUGS:\n\
-- Faces with more than 4 vertices are currently not supported and are not ignored correctly.\n\
-- The vertex-colors per face return values (blender_vertex_colors_per_face=True)\n\
-  are incorrect when blender_face_indices=False.\n\
+If vertex_values_per_loop is True (the default) then the \"texture_coordinates\" and\n\
+\"vertex_colors\" keys will hold arrays that specify per-vertex values *per polygon loop*\n\
+(i.e. using the Blender convention). If vertex_values_per_loop is False the keys will hold\n\
+per-vertex values (i.e. as specified in the PLY file).\n\
 ";
 
 static PyMethodDef ModuleMethods[] =

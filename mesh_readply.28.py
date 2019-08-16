@@ -48,15 +48,15 @@ mesh.loops.foreach_set('vertex_index', p['faces'])
 
 mesh.polygons.add(p['num_faces'])
 mesh.polygons.foreach_set('loop_start', p['loop_start'])
-mesh.polygons.foreach_set('loop_total', p['loop_total'])
+mesh.polygons.foreach_set('loop_total', p['loop_length'])
 
 mesh.validate()
 mesh.update()
 
-#if 'vertex_colors' in p:   
-#    vcol_layer = mesh.vertex_colors.new()
-#    vcol_data = vcol_layer.data
-#    vcol_data.foreach_set('color', p['vertex_colors'])
+if 'vertex_colors' in p:   
+    vcol_layer = mesh.vertex_colors.new()
+    vcol_data = vcol_layer.data
+    vcol_data.foreach_set('color', p['vertex_colors'])
     
 mesh.validate()
 mesh.update()   
@@ -70,7 +70,7 @@ if 'texcoords' in p:
     # XXX This way of assigning UVs is potentially pretty slow for 
     # large numbers of vertices
     
-    texcoords = p['texcoords']
+    texcoords = p['texture_coordinates']
     texcoords = texcoords.reshape((texcoords.size//2, 2))
     
     mesh.uv_textures.new('default')

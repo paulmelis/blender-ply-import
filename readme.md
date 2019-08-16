@@ -18,8 +18,7 @@ See `rply/LICENSE` for the the license of the RPly sources.
 
 ## Rationale
 
-Note: this module has NOT been updated for Blender 2.80 yet. 
-It only works with Blender 2.7x at the moment.
+Work in progress 2.8x branch!
 
 The default PLY importer in Blender is slow (or any Python-based import 
 script in Blender for that matter). This is because during import 
