@@ -1,7 +1,5 @@
 # readply - a Python extension module for fast(er) import of PLY files in Blender
 
-## Introduction
-
 The default PLY importer in Blender is quite slow when it comes to 
 import large mesh files. Most Python-based importers suffer from this
 because during import Python data structures are built up holding all 
@@ -100,9 +98,7 @@ This should use Blender's specific version of Python to build the module.
   
 ## Author
 
-Paul Melis <paul.melis@surfsara.nl>
-
-SURFsara Visualization group
+Paul Melis (paul.melis@surfsara.nl), SURFsara Visualization group
 
 The files under the `rply/` directory are a copy of the RPly 1.1.4 
 source distribution (see http://w3.impa.br/~diego/software/rply/).
