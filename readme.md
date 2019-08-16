@@ -23,8 +23,8 @@ script in Blender for that matter). This is because during import
 Python data structures are built up holding all geometry, vertex colors, 
 etc. This simply takes quite a lot of time (and memory). 
 
-Fortunately, in `foreach_getset()` in `source/blender/python/intern/bpy_rna.c` 
-the passed object may support the buffer protocol.
+Fortunately, Python objects that support the buffer protocol can be
+passed in certain places of the Blender Python API.
 We can use this functionality to pass chunks of memory containing
 vertex and face data, without having to build up Python data
 structures. We use NumPy arrays in the `readply` extension module 
@@ -35,9 +35,9 @@ Notes:
 - The `readply` module is not tied to Blender in any way and can 
   be used as a general PLY reader in Python.
 - Compared to 2.7 the 2.8x version of Blender already improves on the
-  import time in the example below, but the speed improvement using
-  this module is still of the same order (roughly 6x). Memory usage
-  in 2.8x also improved substantially.
+  import time in the example below. Memory usage in 2.8x also improved 
+  substantially. But the speed improvement using this module is still 
+  of the same order (roughly 6x). 
 - There was a [Google Summer of Code 2019 project](https://devtalk.blender.org/t/gsoc-2019-fast-import-and-export/7343) for creating new
   faster Blender importers for PLY, STL and OBJ. The results unfortunately
   do not seem to be merged with mainline Blender at the moment.
@@ -46,8 +46,8 @@ Notes:
 
 ## Performance
 
-Below are some numbers when importing the Asian Dragon model ([1]) from 
-The Stanford 3D Scanning Repository ([2]). This 3D model consists of
+Below are some numbers when importing the Asian Dragon model [1] from 
+The Stanford 3D Scanning Repository [2]. This 3D model consists of
 3,609,600 vertices and 7,219,045 triangles.
 
 With Blender 2.80.75 and `xyzrgb_dragon.ply` already in the filesystem cache:
@@ -55,7 +55,6 @@ With Blender 2.80.75 and `xyzrgb_dragon.ply` already in the filesystem cache:
 ```
 # Native blender PLY importer (bpy.ops.import_mesh.ply())
 $ blender -P test/blender_native_import.py -- xyzrgb_dragon.ply
-
 total                           38.664 sec
 
 # mesh_readply.py using readply extension module
