@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# blender -P mesh_readply.py -- file.ply
+# Blender 2.8x version
 #
-# See https://www.blender.org/api/blender_python_api_2_67_release/info_gotcha.html#ngons-and-tessellation-faces
+# blender -P mesh_readply.py -- file.ply
 #
 import sys, os, time
 import bpy, bmesh
@@ -16,23 +16,18 @@ except ImportError:
     sys.path.insert(0, scriptdir)
     from readply import readply
 
+# Option parsing
+
 args = []
 idx = sys.argv.index('--')
 if idx != -1:
     args = sys.argv[idx+1:]
 
-# In foreach_getset() in source/blender/python/intern/bpy_rna.c the
-# passed object is checked for supporting the buffer protocol.
-# We can use this functionality to pass chunks of memory containing
-# vertex and face data, without having to build up a Python data
-# structure. We use NumPy arrays here to easily pass the data.
-
-fname = '/data/models/uss_enterprise-jjabrams/export.bin.ply'
-#fname = '/home/paulm/mnt/elvis/uva/rbc-util/RBC.00003300.ply'
-#fname = 'zeroindex.ply'
-
+fname = './textured_monkey.ply'
 if len(args) > 0:
     fname = args[0]
+
+# Start parsing the PLY file
 
 t0 = time.time()
 
@@ -48,54 +43,40 @@ mesh = bpy.data.meshes.new(name='imported mesh')
 mesh.vertices.add(p['num_vertices'])
 mesh.vertices.foreach_set('co', p['vertices'])
 
-mesh.tessfaces.add(p['num_faces'])
-mesh.tessfaces.foreach_set('vertices_raw', p['faces'])
+mesh.loops.add(len(p['faces']))
+mesh.loops.foreach_set('vertex_index', p['faces'])
 
-mesh.validate()
-mesh.update()
+mesh.polygons.add(p['num_faces'])
+mesh.polygons.foreach_set('loop_start', p['loop_start'])
+mesh.polygons.foreach_set('loop_total', p['loop_length'])
+
+if 'vertex_normals' in p:    
+    mesh.vertices.foreach_set('normal', p['vertex_normals'])
 
 if 'vertex_colors' in p:   
     vcol_layer = mesh.vertex_colors.new()
     vcol_data = vcol_layer.data
     vcol_data.foreach_set('color', p['vertex_colors'])
     
-mesh.validate()
-mesh.update()   
-
-if 'vertex_normals' in p:    
-    mesh.vertices.foreach_set('normal', p['vertex_normals'])
-
-if 'texcoords' in p:
-    
-    # XXX This way of assigning UVs is potentially pretty slow for 
-    # large numbers of vertices
-    
-    texcoords = p['texcoords']
-    texcoords = texcoords.reshape((texcoords.size//2, 2))
-    
-    mesh.uv_textures.new('default')
-    
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    
-    uv_layer = bm.loops.layers.uv[0]
-    
-    for fi, f in enumerate(bm.faces):
-        for l in f.loops:
-            vi = l.vert.index
-            l[uv_layer].uv = tuple(texcoords[vi])
-    
-    bm.to_mesh(mesh)
+if 'texture_coordinates' in p:
+    uv_layer = mesh.uv_layers.new(name='default')
+    uv_layer.data.foreach_set('uv', p['texture_coordinates'])
 
 mesh.validate()
 mesh.update()   
+
+# Create object to link to mesh
 
 obj = bpy.data.objects.new('imported object', mesh)
 
-s = bpy.context.scene
-s.objects.link(obj)
-s.objects.active = obj
-obj.select = True
+# Add object to the scene
+scene = bpy.context.scene
+scene.collection.children[0].objects.link(obj)
+
+# Select the new object and make it active
+bpy.ops.object.select_all(action='DESELECT')
+obj.select_set(True)
+bpy.context.view_layer.objects.active = obj
 
 t2 = time.time()
 print('Blender object+mesh created in %.3fs' % (t2-t1))
