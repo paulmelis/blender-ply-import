@@ -50,52 +50,28 @@ mesh.polygons.add(p['num_faces'])
 mesh.polygons.foreach_set('loop_start', p['loop_start'])
 mesh.polygons.foreach_set('loop_total', p['loop_length'])
 
-mesh.validate()
-mesh.update()
+if 'vertex_normals' in p:    
+    mesh.vertices.foreach_set('normal', p['vertex_normals'])
 
 if 'vertex_colors' in p:   
     vcol_layer = mesh.vertex_colors.new()
     vcol_data = vcol_layer.data
     vcol_data.foreach_set('color', p['vertex_colors'])
     
-mesh.validate()
-mesh.update()   
-
-if 'vertex_normals' in p:    
-    mesh.vertices.foreach_set('normal', p['vertex_normals'])
-
-"""
-if 'texcoords' in p:
-    
-    # XXX This way of assigning UVs is potentially pretty slow for 
-    # large numbers of vertices
-    
-    texcoords = p['texture_coordinates']
-    texcoords = texcoords.reshape((texcoords.size//2, 2))
-    
-    mesh.uv_textures.new('default')
-    
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    
-    uv_layer = bm.loops.layers.uv[0]
-    
-    for fi, f in enumerate(bm.faces):
-        for l in f.loops:
-            vi = l.vert.index
-            l[uv_layer].uv = tuple(texcoords[vi])
-    
-    bm.to_mesh(mesh)
-"""
+if 'texture_coordinates' in p:
+    uv_layer = mesh.uv_layers.new(name='default')
+    uv_layer.data.foreach_set('uv', p['texture_coordinates'])
 
 mesh.validate()
 mesh.update()   
+
+# Create object to link to mesh
 
 obj = bpy.data.objects.new('imported object', mesh)
 
 # Add object to the scene
 scene = bpy.context.scene
-scene.collection.objects.link(obj)
+scene.collection.children[0].objects.link(obj)
 
 # Select the new object and make it active
 bpy.ops.object.select_all(action='DESELECT')

@@ -408,8 +408,6 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         return NULL;
     }
 
-    //printf("%d triangles, %d quads\n", num_triangles, num_quads);
-
     // Clean up PLY reader
 
     ply_close(ply);
@@ -475,11 +473,11 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         if (vertex_values_per_loop)
         {
             // Convert list of per-vertex RGB colors to Blender-style 
-            // per-vertex RGBA colors per face 
+            // per-vertex-per-face-loop RGBA colors 
 
             const int n = 4*next_face_element_index;
 
-            float   *vcol2 = (float*) malloc (n*sizeof(float));
+            float   *vcol2 = (float*) malloc(n*sizeof(float));
             float   *vcol2color = vcol2;
             float   *col;
             int     vi;
@@ -517,12 +515,48 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
     if (have_vertex_texcoords)
     {
-        npy_intp    np_vertex_texcoords_dims[1] = { nvertices*2 };
-
-        PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertex_texcoords_dims, NPY_FLOAT, vertex_texcoords);
-        _set_base_object(arr, vertex_texcoords, "vertex_texcoords");
-        PyObject *np_vtexcoords = (PyObject*) arr;    
+        PyObject *np_vtexcoords;
                 
+        if (vertex_values_per_loop)
+        {
+            // Convert list of per-vertex UV coordinates to Blender-style 
+            // per-vertex-per-face-loop UV coordinates 
+
+            const int n = 2*next_face_element_index;
+
+            float   *uv2 = (float*) malloc(n*sizeof(float));
+            float   *uv2value = uv2;
+            float   *uv;
+            int     vi;
+            
+            for (int fi = 0; fi < next_face_element_index; fi++)
+            {
+                vi = faces[fi];
+
+                uv = vertex_texcoords + 2*vi;
+
+                uv2value[0] = uv[0];
+                uv2value[1] = uv[1];
+                uv2value += 2;
+            }
+
+            free(vertex_texcoords);
+            
+            npy_intp    dims[1] = { n };
+            PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, uv2);        
+            _set_base_object(arr, uv2, "texture_coordinates");
+            np_vtexcoords = (PyObject*) arr;            
+        }
+        else
+        {
+            // Per-vertex UV coordinates
+            npy_intp    np_vertex_texcoords_dims[1] = { nvertices*2 };
+
+            PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertex_texcoords_dims, NPY_FLOAT, vertex_texcoords);
+            _set_base_object(arr, vertex_texcoords, "texture_coordinates");
+            np_vtexcoords = (PyObject*) arr;    
+        }
+                    
         PyDict_SetItemString(result, "texture_coordinates", np_vtexcoords);
     }
 
