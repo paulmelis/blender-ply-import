@@ -118,13 +118,20 @@ _set_base_object(PyArrayObject *arrobj, void *memory, const char *name)
 //
 // rply stuff (arrays and callbacks)
 //
+// We don't use std::vector's for this as the deallocation will be
+// done from _MyDeallocObject. It might be possible to place a 
+// std::vector in _MyDeallocObject, but for now we're using malloc()
+// and friends.
+//
 
 static float    *vertices = NULL;
 static int      next_vertex_element_offset;
 
-static uint32_t *faces = NULL;
-static uint32_t *triangles = NULL;
-static uint32_t *quads = NULL;
+static uint32_t *faces = NULL;          // XXX vertex_indices
+static uint32_t *loop_start = NULL;
+static uint32_t *loop_total = NULL;
+static int      face_indices_size;
+static int      next_face_offset;
 static int      next_face_element_offset;
 static int      num_triangles, num_quads;
 
@@ -188,47 +195,24 @@ face_cb(p_ply_argument argument)
 
     if (value_index == -1)
     {
-        // First value of a list property, the one that gives the number of entries
-        if (length > 4)
-            fprintf(stderr, "Warning: ignoring face with %ld vertices!\n", length);
-        else if (length == 3)
-            num_triangles++;
-        else if (length == 4)
-            num_quads++;
-
+        // First value of a list property, the one that gives the 
+        // number of entries, i.e. start of new face
+        loop_start[next_face_offset] = next_face_element_offset;
+        loop_total[next_face_offset] = length;
+        next_face_offset++;
+        
         return 1;
     }
     
-    //if (length > 4)
-        //return 1;
-
-    // XXX check what happens when length > 4 here, seems we DON'T ignore those faces
+    if (next_face_element_offset == face_indices_size)
+    {
+        face_indices_size = int(face_indices_size * 1.1);
+        faces = (uint32_t*) realloc(faces, face_indices_size*sizeof(uint32_t));
+        // XXX check faces != NULL
+    }
+    
     vertex_index = ply_get_argument_value(argument);
-    faces[next_face_element_offset] = vertex_index;
-    next_face_element_offset++;
-
-    // Blender's vertices_raw array uses 4 vertex indices per face,
-    // denoting either a triangle or a quad.
-    // For a triangle the last (fourth) index needs to be 0.
-
-    if (length == 3 && value_index == 2)
-    {
-        // Last index of triangle was just added to the index array.
-        // Add extra 0 index to get to 4 indices per face
-        faces[next_face_element_offset] = 0;
-        next_face_element_offset++;
-    }
-    else if (length == 4 && value_index == 3 && vertex_index == 0)
-    {
-        // Handle the case when there is a quad that has indices i, j, k, 0.
-        // We should cycle the indices to move the 0 out of the last place,
-        // as this quad would otherwise get interpreted as a triangle.
-        const int firstidx = next_face_element_offset-4;
-        faces[firstidx+3] = faces[firstidx+2];
-        faces[firstidx+2] = faces[firstidx+1];
-        faces[firstidx+1] = faces[firstidx];
-        faces[firstidx] = 0;
-    }
+    faces[next_face_element_offset++] = vertex_index;
 
     return 1;
 }
@@ -320,12 +304,13 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         if (strcmp(name, "red") == 0)
         {
             // Assumes green and blue properties are also available
+            // XXX is there ever an alpha value?
             have_vertex_colors = true;
 
             if (ptype == PLY_UCHAR)
-                vertex_color_scale_factor = 1.0 / 255;
+                vertex_color_scale_factor = 1.0f / 255;
             else if (ptype == PLY_FLOAT)
-                vertex_color_scale_factor = 1.0;
+                vertex_color_scale_factor = 1.0f;
             else
                 fprintf(stderr, "Warning: vertex color value type is %d, don't know how to handle!\n", ptype);
 
@@ -367,9 +352,19 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     vertices = (float*) malloc(sizeof(float)*nvertices*3);
     next_vertex_element_offset = 0;
 
-    // We assume triangles (with last index 0) or quads, hence 4 indices per face
-    faces = (uint32_t*) malloc(sizeof(uint32_t)*nfaces*4);
+    // As we don't know the number of indices in advance we assume
+    // quads. For a pure-triangle mesh this will overallocate by 1/4th,
+    // but for a mesh with general n-gons we might have to reallocate
+    // later on.
+    
+    next_face_offset = 0;
     next_face_element_offset = 0;
+    
+    face_indices_size = nfaces*4;
+    faces = (uint32_t*) malloc(sizeof(uint32_t)*face_indices_size);
+    
+    loop_start = (uint32_t*) malloc(sizeof(uint32_t)*nfaces);
+    loop_total = (uint32_t*) malloc(sizeof(uint32_t)*nfaces);
 
     if (have_vertex_normals)
     {
@@ -446,61 +441,22 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
     // Faces
     
-    if (blender_face_indices)
-    {
-        // Single array holding both triangles and quads.
-        // 4 indices per face, triangles always have fourth index of 0
-        npy_intp np_faces_dims[1] = { nfaces*4 };
-        PyObject *np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_UINT32, faces);
-        _set_base_object((PyArrayObject*)np_faces, faces, "faces");
-        
-        PyDict_SetItemString(result, "faces", np_faces);
-    }
-    else
-    {
-        // Separate arrays of triangles and quads
-        
-        triangles = (uint32_t*) malloc(sizeof(uint32_t)*num_triangles*3);
-        quads = (uint32_t*) malloc(sizeof(uint32_t)*num_quads*4);
-        
-        const uint32_t *face = faces;
-        uint32_t *triangle = triangles;
-        uint32_t *quad = quads;
-        for (int f = 0; f < nfaces; f++)
-        {
-            if (face[3] == 0)
-            {
-                // Triangle
-                triangle[0] = face[0];
-                triangle[1] = face[1];
-                triangle[2] = face[2];
-                triangle += 3;
-            }
-            else
-            {
-                // Quad
-                quad[0] = face[0];
-                quad[1] = face[1];
-                quad[2] = face[2];
-                quad[3] = face[3];
-                quad += 4;
-            }
-            face += 4;
-        }
-        free(faces);
-        
-        npy_intp np_triangles_dims[1] = { num_triangles*3 };
-        PyArrayObject *np_triangles = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_triangles_dims, NPY_UINT32, triangles);
-        _set_base_object(np_triangles, triangles, "triangles");
-        
-        PyDict_SetItemString(result, "triangles", (PyObject*)np_triangles);
-        
-        npy_intp np_quads_dims[1] = { num_quads*4 };
-        PyArrayObject *np_quads = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_quads_dims, NPY_UINT32, quads);
-        _set_base_object(np_quads, quads, "quads");
-        
-        PyDict_SetItemString(result, "quads", (PyObject*)np_quads);
-    }
+    // Vertex indices
+    npy_intp np_faces_dims[1] = { next_face_element_offset };
+    PyObject *np_faces = PyArray_SimpleNewFromData(1, np_faces_dims, NPY_UINT32, faces);
+    _set_base_object((PyArrayObject*)np_faces, faces, "faces");
+    PyDict_SetItemString(result, "faces", np_faces);
+    
+    // Loop starts
+    npy_intp np_loop_dims[1] = { nfaces };
+    PyObject *np_loop_start = PyArray_SimpleNewFromData(1, np_loop_dims, NPY_UINT32, loop_start);
+    _set_base_object((PyArrayObject*)np_loop_start, loop_start, "loop_start");    
+    PyDict_SetItemString(result, "loop_start", np_loop_start);    
+
+    // Loop lengths
+    PyObject *np_loop_total = PyArray_SimpleNewFromData(1, np_loop_dims, NPY_UINT32, loop_total);
+    _set_base_object((PyArrayObject*)np_loop_total, loop_total, "loop_total");    
+    PyDict_SetItemString(result, "loop_total", np_loop_total);    
 
     // Optional per-vertex arrays
 
@@ -517,6 +473,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     {
         PyObject *np_vcolors;
         
+        /*
         if (blender_vertex_colors_per_face)
         {
             // Convert list of per-vertex colors 
@@ -562,6 +519,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
             np_vcolors = (PyObject*) arr;            
         }
         else
+        */
         {
             // Per-vertex colors
             PyArrayObject *arr = (PyArrayObject*) PyArray_SimpleNewFromData(1, np_vertices_dims, NPY_FLOAT, vertex_colors);
