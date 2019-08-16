@@ -2,10 +2,11 @@
 
 ## Introduction
 
-The default PLY importer in Blender is quite slow (or any Python-based import 
-script in Blender for that matter). This is because during import 
-Python data structures are built up holding all geometry, vertex colors, 
-etc. This simply takes quite a lot of time (and memory). 
+The default PLY importer in Blender is quite slow when it comes to 
+import large mesh files. Most Python-based importers suffer from this
+because during import Python data structures are built up holding all 
+geometry, vertex colors, etc. This simply takes quite a lot of time 
+(and memory). 
 
 Fortunately, Python objects that support the buffer protocol can be
 passed in certain places of the Blender Python API.
@@ -13,6 +14,11 @@ We can use this functionality to pass chunks of memory containing
 vertex and face data, without having to build up Python data
 structures. We use NumPy arrays in the `readply` extension module 
 to easily pass the data directly to Blender. 
+
+Example usage:
+```
+$ blender [<scene.blend>] -P mesh_readply.py -- myfile.ply
+```
 
 Notes: 
 
