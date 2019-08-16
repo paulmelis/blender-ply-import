@@ -1,22 +1,6 @@
 # readply - a Python extension module for fast(er) import of PLY files in Blender
 
-## Author
-
-Paul Melis <paul.melis@surfsara.nl>
-
-SURFsara Visualization group
-
-The files under the `rply/` directory are a copy of the RPly 1.1.4 
-source distribution (see http://w3.impa.br/~diego/software/rply/).
-
-## License
-
-See the `LICENSE` file in the root directory of this distribution,
-which applies to all files except the ones in the `rply/` directory.
-
-See `rply/LICENSE` for the the license of the RPly sources.
-
-## Rationale
+## Introduction
 
 The default PLY importer in Blender is quite slow (or any Python-based import 
 script in Blender for that matter). This is because during import 
@@ -43,6 +27,8 @@ Notes:
   do not seem to be merged with mainline Blender at the moment.
   If that ever happens this module will probably become obsolete as
   far as its use in Blender is concerned.
+- Development and testing is done on Linux, but the module should compile
+  and work under different operating systems
 
 ## Performance
 
@@ -106,4 +92,19 @@ This should use Blender's specific version of Python to build the module.
 - It is assumed that if the PLY file includes vertex coordinates they 
   are defined in x, y and z order (the PLY header allows properties in any order).
   
-  
+## Author
+
+Paul Melis <paul.melis@surfsara.nl>
+
+SURFsara Visualization group
+
+The files under the `rply/` directory are a copy of the RPly 1.1.4 
+source distribution (see http://w3.impa.br/~diego/software/rply/).
+
+## License
+
+See the `LICENSE` file in the root directory of this distribution,
+which applies to all files except the ones in the `rply/` directory.
+
+See `rply/LICENSE` for the the license of the RPly sources.
+
