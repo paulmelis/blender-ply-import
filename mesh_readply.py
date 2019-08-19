@@ -6,15 +6,15 @@
 import sys, os, time
 import bpy, bmesh
 
-# For uv coordinate handling, see http://blender.stackexchange.com/questions/4820/exporting-uv-coordinates
-
 sys.path.insert(0, '.')
 try:
-    from readply import readply
+    import readply
 except ImportError:
     scriptdir = os.path.split(os.path.abspath(__file__))[0]    
     sys.path.insert(0, scriptdir)
-    from readply import readply
+    import readply
+        
+print('Using readply module: %s' % readply.__file__)
 
 # Option parsing
 
@@ -31,10 +31,12 @@ if len(args) > 0:
 
 t0 = time.time()
 
-p = readply(fname)
+p = readply.readply(fname)
+#print(p)
 
 t1 = time.time()
 print('PLY file read by readply() in %.3fs' % (t1-t0))
+print('%d vertices, %d faces' % (p['num_vertices'], p['loop_start'].shape[0]))
 
 # Create a mesh + object using the vertex and face data in the numpy arrays
 

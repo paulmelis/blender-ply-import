@@ -208,7 +208,11 @@ face_cb(p_ply_argument argument)
     {
         face_indices_size = int(face_indices_size * 1.1);
         faces = (uint32_t*) realloc(faces, face_indices_size*sizeof(uint32_t));
-        // XXX check faces != NULL
+        if (faces == NULL)
+        {
+            fprintf(stderr, "Failed to re-allocate faces array!\n");
+            exit(-1);
+        }
     }
     
     vertex_index = ply_get_argument_value(argument);
@@ -351,7 +355,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     vertices = (float*) malloc(sizeof(float)*nvertices*3);
     next_vertex_element_index = 0;
 
-    // As we don't know the number of indices in advance we assume
+    // As we don't know the number of indices needed in advance we assume
     // quads. For a pure-triangle mesh this will overallocate by 1/4th,
     // but for a mesh with general n-gons we might have to reallocate
     // later on.
@@ -359,7 +363,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     next_face_offset = 0;
     next_face_element_index = 0;
     
-    face_indices_size = nfaces*4;
+    face_indices_size = nfaces > 128 ? nfaces*4 : 512;
     faces = (uint32_t*) malloc(sizeof(uint32_t)*face_indices_size);
     
     loop_start = (uint32_t*) malloc(sizeof(uint32_t)*nfaces);
