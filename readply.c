@@ -16,8 +16,8 @@ TODO:
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <rply.h>
-#include <cstdio>
-#include <cassert>
+#include <stdio.h>
+#include <assert.h>
 
 #ifdef _MSC_VER
 typedef __int32 int32_t;
@@ -25,7 +25,7 @@ typedef unsigned __int32 uint32_t;
 typedef __int64 int64_t;
 typedef unsigned __int64 uint64_t;
 #else
-#include <cstdint>
+#include <stdint.h>
 #endif
 
 //#define DEBUG
@@ -206,7 +206,7 @@ face_cb(p_ply_argument argument)
     
     if (next_face_element_index == face_indices_size)
     {
-        face_indices_size = int(face_indices_size * 1.1);
+        face_indices_size = (int)(face_indices_size * 1.1);
         faces = (uint32_t*) realloc(faces, face_indices_size*sizeof(uint32_t));
         if (faces == NULL)
         {
@@ -288,9 +288,9 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
 
     // Set optional per-vertex callbacks
 
-    bool            have_vertex_colors = false;
-    bool            have_vertex_normals = false;
-    bool            have_vertex_texcoords = false;      // Either s,t or u,v sets will be used, but not both
+    int have_vertex_colors = 0;
+    int have_vertex_normals = 0;
+    int have_vertex_texcoords = 0;      // Either s,t or u,v sets will be used, but not both
 
     p_ply_property  prop;
     e_ply_type      ptype, plength_type, pvalue_type;
@@ -308,7 +308,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         {
             // Assumes green and blue properties are also available
             // XXX is there ever an alpha value?
-            have_vertex_colors = true;
+            have_vertex_colors = 1;
 
             if (ptype == PLY_UCHAR)
                 vertex_color_scale_factor = 1.0f / 255;
@@ -324,7 +324,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         else if (strcmp(name, "nx") == 0)
         {
             // Assumes ny and nz properties are also available
-            have_vertex_normals = true;
+            have_vertex_normals = 1;
 
             ply_set_read_cb(ply, "vertex", "nx", vertex_normal_cb, NULL, 0);
             ply_set_read_cb(ply, "vertex", "ny", vertex_normal_cb, NULL, 0);
@@ -333,7 +333,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         else if (strcmp(name, "s") == 0 && !have_vertex_texcoords)
         {
             // Assumes t property is also available
-            have_vertex_texcoords = true;
+            have_vertex_texcoords = 1;
 
             ply_set_read_cb(ply, "vertex", "s", vertex_texcoord_cb, NULL, 0);
             ply_set_read_cb(ply, "vertex", "t", vertex_texcoord_cb, NULL, 1);
@@ -341,7 +341,7 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
         else if (strcmp(name, "u") == 0 && !have_vertex_texcoords)
         {
             // Assumes v property is also available
-            have_vertex_texcoords = true;
+            have_vertex_texcoords = 1;
 
             ply_set_read_cb(ply, "vertex", "u", vertex_texcoord_cb, NULL, 0);
             ply_set_read_cb(ply, "vertex", "v", vertex_texcoord_cb, NULL, 1);
