@@ -14,7 +14,9 @@ import numpy
 
 module1 = Extension('readply', 
     include_dirs = ['./rply', numpy.get_include()],
-    sources = ['readply.cpp', 'rply/rply.c'])
+    sources = ['readply.cpp', 'rply/rply.c'],
+    extra_compile_args = ['-std=c++11']
+)
 
 setup(
     name = 'readply',
