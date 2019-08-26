@@ -63,21 +63,49 @@ Blender's own PLY import script.
 
 ## Building
 
-Two small shell scripts are provided to easily build an in-place version
-of the Python module:
+A `setup.py` script is provided to build the extension, either under
+regular Python or with Blender's included version of Python. Note that
+for Blender usage it is advised to build and install the module using
+Blender's Python version, as that will take care of placing the module
+in the correct location.
 
-- `make2.sh` for Python 2.x
-- `make3.sh` for Python 3.x
+### Blender
 
-These simply call `setup.py` with a few options to do the in-place building.
+For use with Blender run the `setup.py` script with Blender's copy of
+the Python interpreter. There should be a `python???` executable in
+your Blender directory. For example, for 2.80 on Linux the Python binary
+is located at `<blender-dir>/2.80/python/bin/python3.7m`. Then run
 
-For use with Blender use the `setup.py` script as
+```
+$ <blender-dir>/2.80/python/bin/python3.7m setup.py install
+```
+
+If you get an error regarding the `setuptools` module not being found
+then running `.../python3.7m -m ensurepip` should install first the
+`pip` module, followed by the `setuptools` module.
+
+An alternative way is to run the setup script under Blender:
 
 ```
 $ blender -b -P setup.py
 ```
 
-This should use Blender's specific version of Python to build the module.
+### General Python
+
+There's at least two options:
+
+```
+# Build the module, then copy it to the top-level directory
+$ python setup.py build_ext --inplace
+```
+
+or
+
+```
+# Build the module, then copy it to the default Python module location
+# (which might be a system-wide directory)
+$ python setup.py install
+```
 
 ## Notes
 
