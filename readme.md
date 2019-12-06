@@ -40,22 +40,22 @@ Below are some numbers when importing the Asian Dragon model [1] from
 The Stanford 3D Scanning Repository [2]. This 3D model consists of
 3,609,600 vertices and 7,219,045 triangles.
 
-With Blender 2.80.75 and `xyzrgb_dragon.ply` already in the filesystem cache:
+With Blender 2.81 and `xyzrgb_dragon.ply` already in the filesystem cache:
 
 ```
 # Native blender PLY importer (bpy.ops.import_mesh.ply())
 $ blender -P test/blender_native_import.py -- xyzrgb_dragon.ply
-total                           38.664 sec
+total                           43.538 sec
 
 # mesh_readply.py using readply extension module
 $ blender -P mesh_readply.py -- xyzrgb_dragon.ply
-reaply():                        0.613s
-blender mesh+object creation:    4.841s
-total                            5.454s
+reaply():                        0.631s
+blender mesh+object creation:    5.226s
+total                            5.857s
 ```
 
 I.e. in this test the `mesh_readply.py` script (which uses the `readply`
-module) loads the Dragon model 6.4x faster into Blender than 
+module) loads the Dragon model 7.4x faster into Blender than 
 Blender's own PLY import script.
 
 1. http://graphics.stanford.edu/data/3Dscanrep/xyzrgb/xyzrgb_dragon.ply.gz
