@@ -64,25 +64,30 @@ Blender's own PLY import script.
 ## Building
 
 A `setup.py` script is provided to build the extension, either under
-regular Python or with Blender's included version of Python. Note that
-for Blender usage it is advised to build and install the module using
+regular Python or with Blender's included version of Python. 
+
+Note that for Blender usage it is advised to build and install the module using
 Blender's Python version, as that will take care of placing the module
 in the correct location.
 
 ### Blender
 
-For use with Blender run the `setup.py` script with Blender's copy of
-the Python interpreter. There should be a `python???` executable in
-your Blender directory. For example, for 2.80 on Linux the Python binary
-is located at `<blender-dir>/2.80/python/bin/python3.7m`. Then run
+Note: the official Blender binaries do not include the Python headers. 
+So you still need a full Python installation somewhere to build the 
+`readply` extension.
+
+Run the `setup.py` script with Blender's copy of
+the Python interpreter. There should be a `python3.7m` executable in
+your Blender directory. For example, for 2.81 on Linux the Python binary
+is located at `<blender-dir>/2.81/python/bin/python3.7m`. Then run
 
 ```
-$ <blender-dir>/2.80/python/bin/python3.7m setup.py install
+$ <blender-dir>/2.81/python/bin/python3.7m setup.py install
 ```
 
-If you get an error regarding the `setuptools` module not being found
-then running `.../python3.7m -m ensurepip` should install first the
-`pip` module, followed by the `setuptools` module.
+If you get an error regarding the `setuptools` module not being found,
+then run `.../python3.7m -m ensurepip` which should install the
+`pip` module, followed by installing the `setuptools` module.
 
 An alternative way is to run the setup script under Blender:
 
