@@ -282,9 +282,15 @@ readply(PyObject* self, PyObject* args, PyObject *kwds)
     ply_set_read_cb(ply, "vertex", "y", vertex_cb, NULL, 0);
     ply_set_read_cb(ply, "vertex", "z", vertex_cb, NULL, 1);
 
+    // vertex_index used by Blender?
     nfaces = ply_set_read_cb(ply, "face", "vertex_indices", face_cb, NULL, 0);
+    if (nfaces == 0)
+    {
+        printf("No property vertex_indices found for faces, trying vertex_index\n");
+        nfaces = ply_set_read_cb(ply, "face", "vertex_index", face_cb, NULL, 0);
+    }
 
-    //printf("%ld vertices\n%ld faces\n", nvertices, nfaces);
+    printf("%ld vertices\n%ld faces\n", nvertices, nfaces);
 
     // Set optional per-vertex callbacks
 
