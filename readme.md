@@ -78,12 +78,12 @@ in the correct location.
 
 ### Blender
 
-Note: the official Blender binaries do not include the Python headers. 
-So you still need a full Python installation somewhere to build the 
-`readply` extension.
+> [!NOTE]
+> The official Blender binaries do not include the Python headers. 
+> So you still need a full Python installation somewhere to build the `readply` extension.
 
 Run the `setup.py` script with Blender's copy of
-the Python interpreter. There should be a `python3.7m` executable in
+the Python interpreter. There should be a `python3.10` executable in
 your Blender directory. For example, for 3.6.5 on Linux the Python binary
 is located at `<blender-dir>/3.6/python/bin/python3.10`. Then run
 
