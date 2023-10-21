@@ -10,8 +10,8 @@ if idx != 1:
 
 t0 = time.time()
 
-# Legacy, but slower
-bpy.ops.import_mesh.ply(filepath=args[0])
+# New experimental, but much faster
+bpy.ops.wm.ply_import(filepath=args[0])
 
 t1 = time.time()
-print('Imported in %.3fs (legacy)' % (t1-t0))
+print('Imported in %.3fs (experimental)' % (t1-t0))

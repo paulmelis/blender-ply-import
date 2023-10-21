@@ -1,10 +1,13 @@
 # readply - a Python extension module for fast(er) import of PLY files in Blender
 
 The default PLY importer in Blender is quite slow when it comes to 
-import large mesh files. Most Python-based importers suffer from this
-because during import Python data structures are built up holding all 
-geometry, vertex colors, etc. This simply takes quite a lot of time 
-(and memory). 
+importing large mesh files. Blender 3.6 introduced a new C++-based PLY
+importer, which is marked "experimental", see below for comparison against
+this importer.
+
+Most Python-based importers suffer from slow import because during import 
+Python data structures are built up holding all geometry, vertex colors, etc.
+This simply takes quite a lot of time (and memory). 
 
 Fortunately, Python objects that support the buffer protocol can be
 passed in certain places of the Blender Python API.
@@ -22,15 +25,6 @@ Notes:
 
 - The `readply` module is not tied to Blender in any way and can 
   be used as a general PLY reader in Python.
-- Compared to 2.7 the 2.8x version of Blender already improves on the
-  import time in the example below. Memory usage in 2.8x also improved 
-  substantially. But the speed improvement using this module is still 
-  of the same order (roughly 6x). 
-- There was a [Google Summer of Code 2019 project](https://devtalk.blender.org/t/gsoc-2019-fast-import-and-export/7343) for creating new
-  faster Blender importers for PLY, STL and OBJ. The results unfortunately
-  do not seem to be merged with mainline Blender at the moment.
-  If that ever happens this module will probably become obsolete as
-  far as its use in Blender is concerned.
 - Development and testing is done on Linux, but the module should compile
   and work under different operating systems
 
@@ -38,25 +32,37 @@ Notes:
 
 Below are some numbers when importing the Asian Dragon model [1] from 
 The Stanford 3D Scanning Repository [2]. This 3D model consists of
-3,609,600 vertices and 7,219,045 triangles.
+3,609,600 vertices and 7,219,045 triangles, with the file being around
+137 MB.
 
-With Blender 2.81 and `xyzrgb_dragon.ply` already in the filesystem cache:
+With Blender 3.6.5 and `xyzrgb_dragon.ply` already in the filesystem cache:
 
 ```
 # Native blender PLY importer (bpy.ops.import_mesh.ply())
 $ blender -P test/blender_native_import.py -- xyzrgb_dragon.ply
-total                           43.538 sec
+...
+Successfully imported '/home/melis/models/stanford/xyzrgb_dragon.ply' in 40.316 sec
+Imported in 40.601s (legacy)
+
+# New experimental blender PLY importer available in 3.6+ (bpy.ops.wm.ply_import())
+$ blender -P test/blender_native_import_experimental.py -- xyzrgb_dragon.ply
+...
+PLY import of 'xyzrgb_dragon.ply' took 1471.2 ms
+Imported in 1.744s (experimental)
 
 # mesh_readply.py using readply extension module
 $ blender -P mesh_readply.py -- xyzrgb_dragon.ply
-reaply():                        0.631s
-blender mesh+object creation:    5.226s
-total                            5.857s
+...
+PLY file read by readply() in 0.774s
+Blender object+mesh created in 5.812s
+Total import time 6.586s
 ```
 
 I.e. in this test the `mesh_readply.py` script (which uses the `readply`
-module) loads the Dragon model 7.4x faster into Blender than 
-Blender's own PLY import script.
+module) loads the Dragon model 6.2x faster into Blender than 
+Blender's own legacy PLY import script, but 3.8x slower than the new
+experimental PLY importer. The latter appears to be mostly due to a
+much higher time to create the mesh from the imported data.
 
 1. http://graphics.stanford.edu/data/3Dscanrep/xyzrgb/xyzrgb_dragon.ply.gz
 2. http://graphics.stanford.edu/data/3Dscanrep/
@@ -78,15 +84,15 @@ So you still need a full Python installation somewhere to build the
 
 Run the `setup.py` script with Blender's copy of
 the Python interpreter. There should be a `python3.7m` executable in
-your Blender directory. For example, for 2.81 on Linux the Python binary
-is located at `<blender-dir>/2.81/python/bin/python3.7m`. Then run
+your Blender directory. For example, for 3.6.5 on Linux the Python binary
+is located at `<blender-dir>/3.6/python/bin/python3.10`. Then run
 
 ```
-$ <blender-dir>/2.81/python/bin/python3.7m setup.py install
+$ <blender-dir>/3.6/python/bin/python3.10 setup.py install
 ```
 
 If you get an error regarding the `setuptools` module not being found,
-then run `.../python3.7m -m ensurepip` which should install the
+then run `.../python3.10 -m ensurepip` which should install the
 `pip` module, followed by installing the `setuptools` module.
 
 An alternative way is to run the setup script under Blender:
@@ -131,7 +137,7 @@ $ python setup.py install
   
 ## Author
 
-Paul Melis (paul.melis@surfsara.nl), SURFsara Visualization group
+Paul Melis (paul.melis@surf.nl), SURF Visualization team
 
 The files under the `rply/` directory are a copy of the RPly 1.1.4 
 source distribution (see http://w3.impa.br/~diego/software/rply/).
